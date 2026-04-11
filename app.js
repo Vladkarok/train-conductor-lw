@@ -47,6 +47,18 @@ const TRANSLATIONS = {
     importEmpty: 'No data to import',
     rosterExport: 'Copy roster',
     rosterCopied: 'Copied!',
+    share: 'Share',
+    shareTitle: 'Share',
+    shareDesc: 'Copy this link to share your schedule and roster:',
+    shareIncludeRoster: 'Include roster',
+    shareCopy: 'Copy',
+    shareCopied: 'Copied!',
+    shareClose: 'Close',
+    shareSize: '{size} characters in URL',
+    shareLoaded: 'Loaded shared data!',
+    shareLoadConfirm: 'This link contains shared data. Load it? (replaces current data)',
+    shareYes: 'Load',
+    shareNo: 'Cancel',
     hintsTips: 'Tips',
     hintsDismiss: 'Got it',
     hintR4: 'Right-click (long-press on mobile) a name for R4 marking',
@@ -102,6 +114,18 @@ const TRANSLATIONS = {
     importEmpty: 'Немає даних для імпорту',
     rosterExport: 'Копіювати склад',
     rosterCopied: 'Скопійовано!',
+    share: 'Поділитись',
+    shareTitle: 'Поділитись',
+    shareDesc: 'Скопіюйте посилання для передачі розкладу та складу:',
+    shareIncludeRoster: 'Включити склад',
+    shareCopy: 'Копіювати',
+    shareCopied: 'Скопійовано!',
+    shareClose: 'Закрити',
+    shareSize: '{size} символів в URL',
+    shareLoaded: 'Дані завантажено!',
+    shareLoadConfirm: 'Це посилання містить дані. Завантажити? (замінить поточні)',
+    shareYes: 'Завантажити',
+    shareNo: 'Скасувати',
     hintsTips: 'Підказки',
     hintsDismiss: 'Зрозуміло',
     hintR4: 'ПКМ (довге натискання на мобільному) на імені для позначки R4',
@@ -157,6 +181,18 @@ const TRANSLATIONS = {
     importEmpty: 'Aucune donnée à importer',
     rosterExport: "Copier l'effectif",
     rosterCopied: 'Copié !',
+    share: 'Partager',
+    shareTitle: 'Partager',
+    shareDesc: 'Copiez ce lien pour partager votre programme et effectif :',
+    shareIncludeRoster: "Inclure l'effectif",
+    shareCopy: 'Copier',
+    shareCopied: 'Copié !',
+    shareClose: 'Fermer',
+    shareSize: '{size} caractères dans l\'URL',
+    shareLoaded: 'Données chargées !',
+    shareLoadConfirm: 'Ce lien contient des données. Les charger ? (remplace les données actuelles)',
+    shareYes: 'Charger',
+    shareNo: 'Annuler',
     hintsTips: 'Astuces',
     hintsDismiss: 'Compris',
     hintR4: 'Clic droit (appui long sur mobile) sur un nom pour marquer R4',
@@ -177,7 +213,7 @@ function applyLang() {
   document.documentElement.lang = currentLang === 'ua' ? 'uk' : currentLang;
   document.title = t('title');
   document.getElementById('title').textContent = t('title');
-  document.getElementById('exportBtn').textContent = t('export');
+  document.getElementById('exportBtn').title = t('export');
   document.getElementById('thDate').textContent = t('date');
   document.getElementById('thConductor').textContent = t('conductor');
   document.getElementById('thVip').textContent = t('vip');
@@ -188,11 +224,14 @@ function applyLang() {
   document.getElementById('modalDesc').textContent = t('fillDatesDesc');
   document.getElementById('modalConfirm').textContent = t('fillDatesConfirm');
   document.getElementById('modalCancel').textContent = t('fillDatesCancel');
+  document.getElementById('occToggle').textContent = t('occToggle');
+  document.getElementById('occStatsTitle').textContent = t('occStats');
   document.getElementById('rosterToggle').textContent = t('roster');
   document.getElementById('rosterTitle').textContent = t('roster');
   document.getElementById('rosterInput').placeholder = t('rosterAdd');
   document.getElementById('importScheduleBtn').textContent = t('importSchedule');
   document.getElementById('importRosterBtn').textContent = t('importRoster');
+  document.getElementById('shareBtn').textContent = t('share');
   document.getElementById('hintsToggle').title = t('hintsTips');
   document.querySelectorAll('.lang-btn').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.lang === currentLang);
@@ -726,13 +765,10 @@ document.getElementById('exportBtn').addEventListener('click', () => {
 
   navigator.clipboard.writeText(text).then(() => {
     const btn = document.getElementById('exportBtn');
-    const orig = btn.textContent;
-    btn.textContent = t('copied');
-    btn.classList.add('btn-success');
-    setTimeout(() => {
-      btn.textContent = orig;
-      btn.classList.remove('btn-success');
-    }, 1500);
+    const orig = btn.innerHTML;
+    btn.innerHTML = '&#10003;';
+    btn.style.color = 'var(--green)';
+    setTimeout(() => { btn.innerHTML = orig; btn.style.color = ''; }, 1500);
   });
 });
 

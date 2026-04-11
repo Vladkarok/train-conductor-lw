@@ -19,9 +19,6 @@
     </div>
 
     <div class="toolbar">
-      <button class="btn" id="exportBtn">Copy to Clipboard</button>
-      <button class="btn btn-import" id="importScheduleBtn">Import Schedule</button>
-      <button class="btn btn-import" id="importRosterBtn">Import Roster</button>
       <div class="occ-controls">
         <button class="occ-toggle" id="occToggle">Occurrences</button>
         <div class="occ-extras" id="occExtras">
@@ -38,6 +35,8 @@
         </div>
       </div>
       <button class="roster-toggle" id="rosterToggle">Roster</button>
+      <button class="btn btn-share" id="shareBtn">Share</button>
+      <button class="btn btn-import" id="importScheduleBtn">Import Schedule</button>
       <button class="hints-toggle" id="hintsToggle" title="Tips">
         <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1a7 7 0 1 0 0 14A7 7 0 0 0 8 1zm0 2.5a1 1 0 1 1 0 2 1 1 0 0 1 0-2zM9 7v4.5a1 1 0 0 1-2 0V7a1 1 0 0 1 2 0z"/></svg>
         <span class="hints-dot" id="hintsDot"></span>
@@ -50,7 +49,14 @@
     <div class="roster-panel" id="rosterPanel">
       <div class="roster-title">
         <span id="rosterTitle">Roster</span>
-        <button class="roster-export-btn" id="rosterExportBtn" title="Copy roster">&#9776;</button>
+        <div class="roster-title-actions">
+          <button class="roster-action-btn" id="importRosterBtn" title="Import roster">
+            <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1a1 1 0 0 1 1 1v5.586l2.293-2.293a1 1 0 1 1 1.414 1.414l-4 4a1 1 0 0 1-1.414 0l-4-4a1 1 0 0 1 1.414-1.414L7 7.586V2a1 1 0 0 1 1-1zM2 12a1 1 0 1 1 0 2h12a1 1 0 1 1 0-2H2z"/></svg>
+          </button>
+          <button class="roster-action-btn" id="rosterExportBtn" title="Copy roster">
+            <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><path d="M4 2a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v1h-1.5V2a.5.5 0 0 0-.5-.5H6a.5.5 0 0 0-.5.5v1H4V2zM2 5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5zm2-.5a.5.5 0 0 0-.5.5v9a.5.5 0 0 0 .5.5h8a.5.5 0 0 0 .5-.5V5a.5.5 0 0 0-.5-.5H4z"/></svg>
+          </button>
+        </div>
       </div>
       <div class="roster-add">
         <input type="text" id="rosterInput" placeholder="Add name...">
@@ -71,7 +77,11 @@
             <th class="col-date" id="thDate">Date</th>
             <th id="thConductor">Conductor</th>
             <th id="thVip">VIP</th>
-            <th class="col-actions"></th>
+            <th class="col-actions">
+              <button class="th-action-btn" id="exportBtn" title="Copy schedule">
+                <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><path d="M4 2a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v1h-1.5V2a.5.5 0 0 0-.5-.5H6a.5.5 0 0 0-.5.5v1H4V2zM2 5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5zm2-.5a.5.5 0 0 0-.5.5v9a.5.5 0 0 0 .5.5h8a.5.5 0 0 0 .5-.5V5a.5.5 0 0 0-.5-.5H4z"/></svg>
+              </button>
+            </th>
           </tr>
         </thead>
         <tbody id="tableBody"></tbody>
@@ -118,6 +128,25 @@
       </div>
     </div>
 
+    <!-- Share Modal -->
+    <div class="modal-overlay" id="shareModalOverlay">
+      <div class="modal modal-wide">
+        <h3 id="shareModalTitle">Share</h3>
+        <p id="shareModalDesc">Copy this link to share your schedule and roster:</p>
+        <div class="share-link-row">
+          <input type="text" id="shareLinkInput" class="share-link-input" readonly>
+          <button class="btn" id="shareCopyBtn">Copy</button>
+        </div>
+        <p class="share-size" id="shareSize"></p>
+        <div class="share-options">
+          <label><input type="checkbox" id="shareIncludeRoster" checked> <span id="shareIncludeRosterLabel">Include roster</span></label>
+        </div>
+        <div class="modal-actions">
+          <button class="btn-cancel" id="shareModalClose">Close</button>
+        </div>
+      </div>
+    </div>
+
     <!-- Hints Panel -->
     <div class="hints-panel" id="hintsPanel">
       <div class="hints-title"><span id="hintsTitle">Tips</span></div>
@@ -133,14 +162,17 @@
     </div>
   </div>
 
+  <script src="vendor/lz-string.min.js"></script>
   <script src="app.js"></script>
   <script src="occurrence.js"></script>
   <script src="roster.js"></script>
   <script src="import.js"></script>
   <script src="hints.js"></script>
+  <script src="share.js"></script>
   <script>
     loadData();
     loadRoster();
+    loadFromUrl();
     syncRosterFromTable();
     applyLang();
     updateUndoRedoButtons();

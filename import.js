@@ -133,6 +133,13 @@ function flashButton(btn, msgKey, duration) {
   }, duration || 1500);
 }
 
+function flashIconButton(btn, msgKey, duration) {
+  const orig = btn.innerHTML;
+  btn.innerHTML = '&#10003;';
+  btn.style.color = 'var(--green)';
+  setTimeout(() => { btn.innerHTML = orig; btn.style.color = ''; }, duration || 1500);
+}
+
 // ── Schedule import ────────────────────────────────
 document.getElementById('importScheduleBtn').addEventListener('click', () => {
   showImportModal('schedule').then(result => {
@@ -173,7 +180,7 @@ document.getElementById('importRosterBtn').addEventListener('click', () => {
     names.forEach(name => addToRoster(name));
     saveRoster();
     renderRoster();
-    flashButton(document.getElementById('importRosterBtn'), 'importSuccess');
+    flashIconButton(document.getElementById('importRosterBtn'), 'importSuccess');
   });
 });
 

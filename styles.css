@@ -852,6 +852,55 @@ body.occ-drag-ready tr.in-window.window-bottom > td {
   white-space: nowrap;
 }
 
+/* ── Share ────────────────────────────────────── */
+.btn-share {
+  background: var(--accent);
+  border-color: var(--accent-border);
+  color: var(--text);
+}
+.btn-share:hover {
+  background: rgba(125,211,252,.26);
+}
+.share-link-row {
+  display: flex;
+  gap: 8px;
+  margin: 10px 0 6px;
+}
+.share-link-input {
+  flex: 1;
+  background: var(--input-bg);
+  border: 1px solid var(--input-border);
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 11px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  padding: 8px 10px;
+  outline: none;
+  min-width: 0;
+}
+.share-link-input:focus { border-color: var(--accent-solid); }
+.share-size {
+  font-size: 11px;
+  color: var(--muted);
+  margin: 2px 0 8px;
+}
+.share-options {
+  display: flex;
+  gap: 12px;
+  font-size: 13px;
+  color: var(--muted);
+  margin-bottom: 12px;
+}
+.share-options label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+}
+.share-options input[type="checkbox"] {
+  accent-color: var(--accent-solid);
+}
+
 /* ── Hints ────────────────────────────────────── */
 .hints-toggle {
   background: var(--pill-bg);
@@ -929,17 +978,31 @@ body.occ-drag-ready tr.in-window.window-bottom > td {
 }
 .hints-dismiss:hover { background: rgba(125,211,252,.26); }
 
-/* ── Roster export button ─────────────────────── */
-.roster-export-btn {
+/* ── Action icon buttons (copy, import) ───────── */
+.roster-title-actions {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+.roster-action-btn,
+.th-action-btn {
   background: none;
   border: none;
   color: var(--muted);
   cursor: pointer;
-  font-size: 14px;
-  padding: 0 4px;
-  transition: color .15s;
+  padding: 2px 4px;
+  border-radius: 4px;
+  transition: color .15s, background .15s;
+  display: flex;
+  align-items: center;
 }
-.roster-export-btn:hover { color: var(--accent-solid); }
+.roster-action-btn:hover,
+.th-action-btn:hover {
+  color: var(--accent-solid);
+  background: var(--pill-bg);
+}
+.roster-action-btn svg,
+.th-action-btn svg { display: block; }
 
 /* Responsive */
 @media (max-width: 640px) {
