@@ -2023,6 +2023,7 @@
         if (rect.bottom > window.innerHeight) menu.style.top = (y - rect.height) + 'px';
       }
 
+      // Desktop: right-click
       tbody.addEventListener('contextmenu', (e) => {
         const cell = e.target.closest('.cell[data-field="conductor"], .cell[data-field="vip"]');
         if (!cell) return;
@@ -2032,6 +2033,44 @@
         if (!name || !name.trim()) return;
         e.preventDefault();
         showR4Menu(e.clientX, e.clientY, index, field);
+      });
+
+      // Mobile: long-press (500ms)
+      let r4Timer = null, r4StartX = 0, r4StartY = 0;
+      const R4_HOLD_MS = 500;
+      const R4_MOVE_THRESHOLD = 10;
+
+      tbody.addEventListener('touchstart', (e) => {
+        const cell = e.target.closest('.cell[data-field="conductor"], .cell[data-field="vip"]');
+        if (!cell) return;
+        if (e.target.closest('input') || e.target.closest('button')) return;
+        const index = parseInt(cell.dataset.index);
+        const field = cell.dataset.field;
+        const name = rows[index][field];
+        if (!name || !name.trim()) return;
+
+        r4StartX = e.touches[0].clientX;
+        r4StartY = e.touches[0].clientY;
+
+        r4Timer = setTimeout(() => {
+          r4Timer = null;
+          if (navigator.vibrate) navigator.vibrate(30);
+          showR4Menu(r4StartX, r4StartY, index, field);
+        }, R4_HOLD_MS);
+      }, { passive: true });
+
+      document.addEventListener('touchmove', (e) => {
+        if (!r4Timer) return;
+        const dx = Math.abs(e.touches[0].clientX - r4StartX);
+        const dy = Math.abs(e.touches[0].clientY - r4StartY);
+        if (dx > R4_MOVE_THRESHOLD || dy > R4_MOVE_THRESHOLD) {
+          clearTimeout(r4Timer);
+          r4Timer = null;
+        }
+      }, { passive: true });
+
+      document.addEventListener('touchend', () => {
+        if (r4Timer) { clearTimeout(r4Timer); r4Timer = null; }
       });
 
       document.addEventListener('click', (e) => {
