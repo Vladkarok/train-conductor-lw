@@ -483,19 +483,6 @@
     .occ-5 { color: #c084fc !important; font-weight: 600; }
 
     /* Legend */
-    .occ-legend {
-      display: none;
-      gap: 10px;
-      font-size: 11px;
-      color: var(--muted);
-      margin-bottom: 10px;
-      flex-wrap: wrap;
-      justify-content: center;
-    }
-    .occ-legend.visible { display: flex; }
-    .occ-legend-item { display: flex; align-items: center; gap: 4px; }
-    .occ-legend-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
-
     /* Occurrence stats floating panel */
     .occ-stats {
       display: none;
@@ -556,7 +543,7 @@
       text-align: center;
     }
     .occ-stats-badge {
-      padding: 1px 4px;
+      padding: 1px 5px;
       border-radius: 4px;
       font-size: 10px;
       font-weight: 500;
@@ -656,13 +643,6 @@
       <button class="btn-undo" id="undoBtn" disabled title="Undo (Ctrl+Z)">&#8592;</button>
       <button class="btn-redo" id="redoBtn" disabled title="Redo (Ctrl+Y)">&#8594;</button>
     </div>
-    <div class="occ-legend" id="occLegend">
-      <span class="occ-legend-item"><span class="occ-legend-dot" style="background:#facc15"></span> 2x</span>
-      <span class="occ-legend-item"><span class="occ-legend-dot" style="background:#fb923c"></span> 3x</span>
-      <span class="occ-legend-item"><span class="occ-legend-dot" style="background:#f87171"></span> 4x</span>
-      <span class="occ-legend-item"><span class="occ-legend-dot" style="background:#c084fc"></span> 5x+</span>
-    </div>
-
     <div class="occ-stats" id="occStats">
       <div class="occ-stats-title" id="occStatsTitle">Statistics</div>
       <div id="occStatsBody"></div>
@@ -729,13 +709,13 @@
         occToggle: 'Occurrences',
         occStats: 'Statistics',
         occNoData: 'No repeated names',
-        occCond: 'C',
-        occVip: 'V',
+        occCond: 'Cond',
+        occVip: 'VIP',
       },
       ua: {
         title: 'Розклад',
         date: 'Дата',
-        conductor: 'Диригент',
+        conductor: 'Кондуктор',
         vip: 'VIP',
         export: 'Копіювати',
         copied: 'Скопійовано!',
@@ -752,13 +732,13 @@
         occToggle: 'Повторення',
         occStats: 'Статистика',
         occNoData: 'Немає повторів',
-        occCond: 'Д',
+        occCond: 'Конд',
         occVip: 'VIP',
       },
       fr: {
         title: 'Programme',
         date: 'Date',
-        conductor: 'Chef d\'orchestre',
+        conductor: 'Contrôleur',
         vip: 'VIP',
         export: 'Copier',
         copied: 'Copié !',
@@ -775,8 +755,8 @@
         occToggle: 'Occurrences',
         occStats: 'Statistiques',
         occNoData: 'Aucun nom répété',
-        occCond: 'C',
-        occVip: 'V',
+        occCond: 'Cond',
+        occVip: 'VIP',
       },
     };
 
@@ -1107,8 +1087,8 @@
           `<span class="occ-stats-name ${e.cls}">${escapeHtml(e.display)}</span>` +
           `<span class="occ-stats-counts">` +
             `<span class="occ-stats-total ${e.cls}">${e.total}</span>` +
-            (e.cN ? `<span class="occ-stats-badge cond">${cLabel}${e.cN}</span>` : '') +
-            (e.vN ? `<span class="occ-stats-badge vip">${vLabel}${e.vN}</span>` : '') +
+            (e.cN ? `<span class="occ-stats-badge cond">${cLabel} ${e.cN}</span>` : '') +
+            (e.vN ? `<span class="occ-stats-badge vip">${vLabel} ${e.vN}</span>` : '') +
           `</span>` +
         `</div>`
       ).join('');
@@ -1118,7 +1098,6 @@
       document.getElementById('occToggle').classList.toggle('active', occ.enabled);
       document.getElementById('occToggle').textContent = t('occToggle');
       document.getElementById('occExtras').classList.toggle('visible', occ.enabled);
-      document.getElementById('occLegend').classList.toggle('visible', occ.enabled);
       document.getElementById('occWindow').value = String(occ.windowSize);
       document.getElementById('occUp').disabled = !occ.enabled || occ.windowStart <= 0;
       document.getElementById('occDown').disabled = !occ.enabled || occ.windowStart >= w.total - w.size;
