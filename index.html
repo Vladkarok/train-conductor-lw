@@ -567,6 +567,154 @@
       }
     }
 
+    /* Roster panel */
+    .roster-panel {
+      display: none;
+      position: fixed;
+      left: max(12px, calc((100vw - 720px) / 2 - 260px));
+      top: 80px;
+      width: 240px;
+      max-height: calc(100dvh - 100px);
+      overflow-y: auto;
+      background: var(--card-bg);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px;
+      font-size: 12px;
+      z-index: 50;
+      scrollbar-width: thin;
+      scrollbar-color: var(--border) transparent;
+    }
+    .roster-panel.visible { display: block; }
+    .roster-title {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .5px;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .roster-add {
+      display: flex;
+      gap: 4px;
+      margin-bottom: 10px;
+    }
+    .roster-add input {
+      flex: 1;
+      background: var(--input-bg);
+      border: 1px solid var(--input-border);
+      border-radius: 6px;
+      color: var(--text);
+      font-size: 11px;
+      font-family: inherit;
+      padding: 4px 8px;
+      outline: none;
+    }
+    .roster-add input:focus { border-color: var(--accent-solid); }
+    .roster-add input::placeholder { color: var(--muted); opacity: .6; }
+    .roster-add button {
+      background: var(--pill-bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--muted);
+      font-size: 11px;
+      padding: 4px 8px;
+      cursor: pointer;
+    }
+    .roster-add button:hover { color: var(--accent-solid); border-color: var(--accent-border); }
+    .roster-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 4px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .roster-row:last-child { border-bottom: none; }
+    .roster-name {
+      flex: 1;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      margin-right: 6px;
+    }
+    .roster-name.zero { color: var(--danger); opacity: .7; }
+    .roster-counts {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 10px;
+      color: var(--muted);
+      flex-shrink: 0;
+    }
+    .roster-total {
+      font-weight: 700;
+      min-width: 14px;
+      text-align: center;
+      color: var(--text);
+    }
+    .roster-total.zero { color: var(--danger); }
+    .roster-r4 {
+      font-size: 9px;
+      font-weight: 700;
+      color: #f0abfc;
+      background: rgba(240,171,252,.12);
+      padding: 1px 4px;
+      border-radius: 3px;
+      margin-right: 4px;
+      flex-shrink: 0;
+    }
+    .roster-remove {
+      background: none;
+      border: none;
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 13px;
+      padding: 0 2px;
+      opacity: 0;
+      transition: opacity .15s;
+    }
+    .roster-row:hover .roster-remove { opacity: .6; }
+    .roster-remove:hover { color: var(--danger); opacity: 1 !important; }
+    .roster-empty {
+      color: var(--muted);
+      font-style: italic;
+      padding: 8px 0;
+    }
+    .roster-toggle {
+      background: var(--pill-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--muted);
+      font-size: 12px;
+      font-family: inherit;
+      padding: 5px 12px;
+      cursor: pointer;
+      transition: all .15s;
+    }
+    .roster-toggle:hover { color: var(--accent-solid); border-color: var(--accent-border); }
+    .roster-toggle.active {
+      background: var(--accent);
+      border-color: var(--accent-border);
+      color: var(--accent-solid);
+    }
+    @media (max-width: 1300px) {
+      .roster-panel {
+        position: static;
+        width: 100%;
+        max-width: 720px;
+        max-height: none;
+        margin: 0 auto 12px;
+        left: auto;
+        top: auto;
+      }
+    }
+
     /* Inline add row button under table */
     .add-row-inline {
       display: flex;
@@ -639,10 +787,21 @@
           </div>
         </div>
       </div>
+      <button class="roster-toggle" id="rosterToggle">Roster</button>
       <span class="toolbar-spacer"></span>
       <button class="btn-undo" id="undoBtn" disabled title="Undo (Ctrl+Z)">&#8592;</button>
       <button class="btn-redo" id="redoBtn" disabled title="Redo (Ctrl+Y)">&#8594;</button>
     </div>
+
+    <div class="roster-panel" id="rosterPanel">
+      <div class="roster-title"><span id="rosterTitle">Roster</span></div>
+      <div class="roster-add">
+        <input type="text" id="rosterInput" placeholder="Add name...">
+        <button id="rosterAddBtn">+</button>
+      </div>
+      <div id="rosterBody"></div>
+    </div>
+
     <div class="occ-stats" id="occStats">
       <div class="occ-stats-title" id="occStatsTitle">Statistics</div>
       <div id="occStatsBody"></div>
@@ -711,6 +870,9 @@
         occNoData: 'No repeated names',
         occCond: 'Cond',
         occVip: 'VIP',
+        roster: 'Roster',
+        rosterAdd: 'Add name...',
+        rosterEmpty: 'No members yet',
       },
       ua: {
         title: 'Розклад',
@@ -734,6 +896,9 @@
         occNoData: 'Немає повторів',
         occCond: 'Пров',
         occVip: 'VIP',
+        roster: 'Склад',
+        rosterAdd: 'Додати нікнейм...',
+        rosterEmpty: 'Поки немає гравців',
       },
       fr: {
         title: 'Programme',
@@ -757,6 +922,9 @@
         occNoData: 'Aucun nom répété',
         occCond: 'Cond',
         occVip: 'VIP',
+        roster: 'Effectif',
+        rosterAdd: 'Ajouter un nom...',
+        rosterEmpty: 'Aucun membre',
       },
     };
 
@@ -781,10 +949,14 @@
       document.getElementById('modalDesc').textContent = t('fillDatesDesc');
       document.getElementById('modalConfirm').textContent = t('fillDatesConfirm');
       document.getElementById('modalCancel').textContent = t('fillDatesCancel');
+      document.getElementById('rosterToggle').textContent = t('roster');
+      document.getElementById('rosterTitle').textContent = t('roster');
+      document.getElementById('rosterInput').placeholder = t('rosterAdd');
       document.querySelectorAll('.lang-btn').forEach(btn => {
         btn.classList.toggle('active', btn.dataset.lang === currentLang);
       });
       renderTable();
+      renderRoster();
     }
 
     // ── Data ──────────────────────────────────────────────
@@ -811,6 +983,93 @@
         }
       } catch {}
       rows = [newRow()];
+    }
+
+    // ── Roster ──────────────────────────────────────────
+    const ROSTER_KEY = 'schedule_roster';
+    let roster = {}; // { lowercaseName: { display: 'Name', r4: false } }
+    let rosterVisible = false;
+
+    function loadRoster() {
+      try {
+        const raw = localStorage.getItem(ROSTER_KEY);
+        if (raw) roster = JSON.parse(raw);
+      } catch {}
+    }
+    function saveRoster() { localStorage.setItem(ROSTER_KEY, JSON.stringify(roster)); }
+
+    function addToRoster(name) {
+      if (!name) return;
+      const key = name.trim().toLowerCase();
+      if (!key) return;
+      if (!roster[key]) {
+        roster[key] = { display: name.trim(), r4: false };
+        saveRoster();
+      } else if (roster[key].display !== name.trim()) {
+        // Update display casing if changed
+        roster[key].display = name.trim();
+        saveRoster();
+      }
+    }
+
+    // Auto-populate roster from all table data
+    function syncRosterFromTable() {
+      rows.forEach(r => {
+        if (r.conductor) addToRoster(r.conductor);
+        if (r.vip) addToRoster(r.vip);
+      });
+    }
+
+    function getRosterStats() {
+      const stats = {}; // key → { cond: 0, vip: 0 }
+      Object.keys(roster).forEach(k => { stats[k] = { cond: 0, vip: 0 }; });
+      rows.forEach(r => {
+        const c = (r.conductor || '').trim().toLowerCase();
+        const v = (r.vip || '').trim().toLowerCase();
+        if (c && stats[c] !== undefined) stats[c].cond++;
+        if (v && stats[v] !== undefined) stats[v].vip++;
+      });
+      return stats;
+    }
+
+    function renderRoster() {
+      const panel = document.getElementById('rosterPanel');
+      const body = document.getElementById('rosterBody');
+      panel.classList.toggle('visible', rosterVisible);
+      if (!rosterVisible) return;
+
+      const stats = getRosterStats();
+      const entries = Object.entries(roster).map(([key, val]) => {
+        const s = stats[key] || { cond: 0, vip: 0 };
+        return { key, display: val.display, r4: val.r4, cond: s.cond, vip: s.vip, total: s.cond + s.vip };
+      });
+
+      // Sort: R4 first, then by total desc, then alpha
+      entries.sort((a, b) => {
+        if (a.r4 !== b.r4) return a.r4 ? -1 : 1;
+        if (a.total !== b.total) return b.total - a.total;
+        return a.display.localeCompare(b.display);
+      });
+
+      if (!entries.length) {
+        body.innerHTML = `<div class="roster-empty">${escapeHtml(t('rosterEmpty'))}</div>`;
+        return;
+      }
+
+      const cLabel = t('occCond');
+      const vLabel = t('occVip');
+      body.innerHTML = entries.map(e =>
+        `<div class="roster-row" data-key="${e.key}">` +
+          (e.r4 ? `<span class="roster-r4">R4</span>` : '') +
+          `<span class="roster-name${e.total === 0 ? ' zero' : ''}">${escapeHtml(e.display)}</span>` +
+          `<span class="roster-counts">` +
+            `<span class="roster-total${e.total === 0 ? ' zero' : ''}">${e.total}</span>` +
+            (e.cond ? `<span class="occ-stats-badge cond">${cLabel} ${e.cond}</span>` : '') +
+            (e.vip ? `<span class="occ-stats-badge vip">${vLabel} ${e.vip}</span>` : '') +
+          `</span>` +
+          `<button class="roster-remove" data-key="${e.key}" title="Remove">&times;</button>` +
+        `</div>`
+      ).join('');
     }
 
     // Get all rows in the same group
@@ -1280,6 +1539,11 @@
           const group = rows[index].group;
           rows.forEach(r => { if (r.group === group) r.date = val; });
         }
+        // Auto-add to roster
+        if ((field === 'conductor' || field === 'vip') && val) {
+          addToRoster(val);
+          renderRoster();
+        }
         saveData();
         renderTable();
       }
@@ -1587,6 +1851,40 @@
       });
     })();
 
+    // ── Roster controls ─────────────────────────────────
+    document.getElementById('rosterToggle').addEventListener('click', () => {
+      rosterVisible = !rosterVisible;
+      document.getElementById('rosterToggle').classList.toggle('active', rosterVisible);
+      renderRoster();
+    });
+
+    document.getElementById('rosterAddBtn').addEventListener('click', () => {
+      const input = document.getElementById('rosterInput');
+      const name = input.value.trim();
+      if (name) {
+        addToRoster(name);
+        input.value = '';
+        renderRoster();
+      }
+    });
+
+    document.getElementById('rosterInput').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        document.getElementById('rosterAddBtn').click();
+      }
+    });
+
+    document.getElementById('rosterBody').addEventListener('click', (e) => {
+      const removeBtn = e.target.closest('.roster-remove');
+      if (removeBtn) {
+        const key = removeBtn.dataset.key;
+        delete roster[key];
+        saveRoster();
+        renderRoster();
+      }
+    });
+
     // ── Language switcher ────────────────────────────────
     document.querySelectorAll('.lang-btn').forEach(btn => {
       btn.addEventListener('click', () => {
@@ -1598,6 +1896,8 @@
 
     // ── Init ─────────────────────────────────────────────
     loadData();
+    loadRoster();
+    syncRosterFromTable();
     applyLang();
     updateUndoRedoButtons();
   </script>
