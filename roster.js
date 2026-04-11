@@ -1,0 +1,269 @@
+// ── Roster ──────────────────────────────────────────
+const ROSTER_KEY = 'schedule_roster';
+let roster = {};
+let rosterVisible = false;
+
+function loadRoster() {
+  try {
+    const raw = localStorage.getItem(ROSTER_KEY);
+    if (raw) roster = JSON.parse(raw);
+  } catch {}
+}
+function saveRoster() { localStorage.setItem(ROSTER_KEY, JSON.stringify(roster)); }
+
+function addToRoster(name) {
+  if (!name) return;
+  const key = name.trim().toLowerCase();
+  if (!key) return;
+  if (!roster[key]) {
+    roster[key] = { display: name.trim(), r4: false };
+    saveRoster();
+  } else if (roster[key].display !== name.trim()) {
+    roster[key].display = name.trim();
+    saveRoster();
+  }
+}
+
+function syncRosterFromTable() {
+  rows.forEach(r => {
+    if (r.conductor) addToRoster(r.conductor);
+    if (r.vip) addToRoster(r.vip);
+  });
+}
+
+function getRosterStats() {
+  const stats = {};
+  Object.keys(roster).forEach(k => { stats[k] = { cond: 0, vip: 0 }; });
+  rows.forEach(r => {
+    const c = (r.conductor || '').trim().toLowerCase();
+    const v = (r.vip || '').trim().toLowerCase();
+    if (c && stats[c] !== undefined) stats[c].cond++;
+    if (v && stats[v] !== undefined) stats[v].vip++;
+  });
+  return stats;
+}
+
+function renderRoster() {
+  const panel = document.getElementById('rosterPanel');
+  const body = document.getElementById('rosterBody');
+  panel.classList.toggle('visible', rosterVisible);
+  if (!rosterVisible) return;
+
+  const stats = getRosterStats();
+  const entries = Object.entries(roster).map(([key, val]) => {
+    const s = stats[key] || { cond: 0, vip: 0 };
+    return { key, display: val.display, r4: val.r4, cond: s.cond, vip: s.vip, total: s.cond + s.vip };
+  });
+
+  entries.sort((a, b) => {
+    if (a.r4 !== b.r4) return a.r4 ? -1 : 1;
+    if (a.total !== b.total) return b.total - a.total;
+    return a.display.localeCompare(b.display);
+  });
+
+  if (!entries.length) {
+    body.innerHTML = `<div class="roster-empty">${escapeHtml(t('rosterEmpty'))}</div>`;
+    return;
+  }
+
+  const cLabel = t('occCond');
+  const vLabel = t('occVip');
+  body.innerHTML = entries.map(e =>
+    `<div class="roster-row" data-key="${e.key}">` +
+      (e.r4 ? `<span class="roster-r4">R4</span>` : '') +
+      `<span class="roster-name${e.total === 0 ? ' zero' : ''}">${escapeHtml(e.display)}</span>` +
+      `<span class="roster-counts">` +
+        `<span class="roster-total${e.total === 0 ? ' zero' : ''}">${e.total}</span>` +
+        (e.cond ? `<span class="occ-stats-badge cond">${cLabel} ${e.cond}</span>` : '') +
+        (e.vip ? `<span class="occ-stats-badge vip">${vLabel} ${e.vip}</span>` : '') +
+      `</span>` +
+      `<button class="roster-remove" data-key="${e.key}" title="Remove">&times;</button>` +
+    `</div>`
+  ).join('');
+}
+
+// ── R4 context menu ──────────────────────────────────
+(function() {
+  let menu = null;
+
+  function closeMenu() {
+    if (menu) { menu.remove(); menu = null; }
+  }
+
+  function setR4(index, field, value) {
+    const r4Key = field === 'conductor' ? 'r4c' : 'r4v';
+    pushUndo();
+    rows[index][r4Key] = value;
+    const name = (rows[index][field] || '').trim().toLowerCase();
+    if (name && roster[name]) {
+      roster[name].r4 = rows.some(r => {
+        const c = (r.conductor || '').trim().toLowerCase();
+        const v = (r.vip || '').trim().toLowerCase();
+        return (c === name && r.r4c) || (v === name && r.r4v);
+      });
+      saveRoster();
+    }
+    saveData();
+    renderTable();
+    renderRoster();
+  }
+
+  function setR4All(name, field, value) {
+    const key = name.trim().toLowerCase();
+    pushUndo();
+    rows.forEach(r => {
+      if (field === 'conductor' && (r.conductor || '').trim().toLowerCase() === key) r.r4c = value;
+      if (field === 'vip' && (r.vip || '').trim().toLowerCase() === key) r.r4v = value;
+    });
+    rows.forEach(r => {
+      if (field !== 'conductor' && (r.conductor || '').trim().toLowerCase() === key) r.r4c = value;
+      if (field !== 'vip' && (r.vip || '').trim().toLowerCase() === key) r.r4v = value;
+    });
+    if (roster[key]) { roster[key].r4 = value; saveRoster(); }
+    saveData();
+    renderTable();
+    renderRoster();
+  }
+
+  function showR4Menu(x, y, index, field) {
+    closeMenu();
+    const row = rows[index];
+    const name = field === 'conductor' ? row.conductor : row.vip;
+    if (!name || !name.trim()) return;
+
+    const r4Key = field === 'conductor' ? 'r4c' : 'r4v';
+    const hasR4 = row[r4Key];
+
+    menu = document.createElement('div');
+    menu.className = 'r4-menu';
+    menu.style.left = x + 'px';
+    menu.style.top = y + 'px';
+
+    if (hasR4) {
+      const btnThis = document.createElement('button');
+      btnThis.textContent = t('r4Remove');
+      btnThis.addEventListener('click', () => { closeMenu(); setR4(index, field, false); });
+      menu.appendChild(btnThis);
+
+      const divider = document.createElement('div');
+      divider.className = 'r4-menu-divider';
+      menu.appendChild(divider);
+
+      const btnAll = document.createElement('button');
+      btnAll.textContent = t('r4RemoveAll').replace('{name}', name.trim());
+      btnAll.addEventListener('click', () => { closeMenu(); setR4All(name, field, false); });
+      menu.appendChild(btnAll);
+    } else {
+      const btnThis = document.createElement('button');
+      btnThis.textContent = t('r4ThisCell');
+      btnThis.addEventListener('click', () => { closeMenu(); setR4(index, field, true); });
+      menu.appendChild(btnThis);
+
+      const divider = document.createElement('div');
+      divider.className = 'r4-menu-divider';
+      menu.appendChild(divider);
+
+      const btnAll = document.createElement('button');
+      btnAll.textContent = t('r4AllCells').replace('{name}', name.trim());
+      btnAll.addEventListener('click', () => { closeMenu(); setR4All(name, field, true); });
+      menu.appendChild(btnAll);
+    }
+
+    document.body.appendChild(menu);
+
+    const rect = menu.getBoundingClientRect();
+    if (rect.right > window.innerWidth) menu.style.left = (x - rect.width) + 'px';
+    if (rect.bottom > window.innerHeight) menu.style.top = (y - rect.height) + 'px';
+  }
+
+  // Desktop: right-click
+  tbody.addEventListener('contextmenu', (e) => {
+    const cell = e.target.closest('.cell[data-field="conductor"], .cell[data-field="vip"]');
+    if (!cell) return;
+    const index = parseInt(cell.dataset.index);
+    const field = cell.dataset.field;
+    const name = rows[index][field];
+    if (!name || !name.trim()) return;
+    e.preventDefault();
+    showR4Menu(e.clientX, e.clientY, index, field);
+  });
+
+  // Mobile: long-press (500ms)
+  let r4Timer = null, r4StartX = 0, r4StartY = 0;
+  const R4_HOLD_MS = 500;
+  const R4_MOVE_THRESHOLD = 10;
+
+  tbody.addEventListener('touchstart', (e) => {
+    const cell = e.target.closest('.cell[data-field="conductor"], .cell[data-field="vip"]');
+    if (!cell) return;
+    if (e.target.closest('input') || e.target.closest('button')) return;
+    const index = parseInt(cell.dataset.index);
+    const field = cell.dataset.field;
+    const name = rows[index][field];
+    if (!name || !name.trim()) return;
+
+    r4StartX = e.touches[0].clientX;
+    r4StartY = e.touches[0].clientY;
+
+    r4Timer = setTimeout(() => {
+      r4Timer = null;
+      if (navigator.vibrate) navigator.vibrate(30);
+      showR4Menu(r4StartX, r4StartY, index, field);
+    }, R4_HOLD_MS);
+  }, { passive: true });
+
+  document.addEventListener('touchmove', (e) => {
+    if (!r4Timer) return;
+    const dx = Math.abs(e.touches[0].clientX - r4StartX);
+    const dy = Math.abs(e.touches[0].clientY - r4StartY);
+    if (dx > R4_MOVE_THRESHOLD || dy > R4_MOVE_THRESHOLD) {
+      clearTimeout(r4Timer);
+      r4Timer = null;
+    }
+  }, { passive: true });
+
+  document.addEventListener('touchend', () => {
+    if (r4Timer) { clearTimeout(r4Timer); r4Timer = null; }
+  });
+
+  document.addEventListener('click', (e) => {
+    if (menu && !menu.contains(e.target)) closeMenu();
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeMenu();
+  });
+})();
+
+// ── Roster controls ─────────────────────────────────
+document.getElementById('rosterToggle').addEventListener('click', () => {
+  rosterVisible = !rosterVisible;
+  document.getElementById('rosterToggle').classList.toggle('active', rosterVisible);
+  renderRoster();
+});
+
+document.getElementById('rosterAddBtn').addEventListener('click', () => {
+  const input = document.getElementById('rosterInput');
+  const name = input.value.trim();
+  if (name) {
+    addToRoster(name);
+    input.value = '';
+    renderRoster();
+  }
+});
+
+document.getElementById('rosterInput').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    document.getElementById('rosterAddBtn').click();
+  }
+});
+
+document.getElementById('rosterBody').addEventListener('click', (e) => {
+  const removeBtn = e.target.closest('.roster-remove');
+  if (removeBtn) {
+    const key = removeBtn.dataset.key;
+    delete roster[key];
+    saveRoster();
+    renderRoster();
+  }
+});
