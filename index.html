@@ -482,6 +482,50 @@
     .occ-4 { color: #f87171 !important; font-weight: 600; }
     .occ-5 { color: #c084fc !important; font-weight: 600; }
 
+    /* R4 mark */
+    .cell-r4 { background: rgba(240,171,252,.06); }
+    .r4-badge {
+      font-size: 9px;
+      font-weight: 700;
+      color: #f0abfc;
+      background: rgba(240,171,252,.15);
+      padding: 1px 3px;
+      border-radius: 3px;
+      margin-left: 4px;
+      vertical-align: middle;
+    }
+
+    /* R4 context menu */
+    .r4-menu {
+      position: fixed;
+      z-index: 200;
+      background: #1a2233;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 4px 0;
+      min-width: 160px;
+      box-shadow: 0 8px 24px rgba(0,0,0,.4);
+      font-size: 12px;
+    }
+    .r4-menu button {
+      display: block;
+      width: 100%;
+      text-align: left;
+      background: none;
+      border: none;
+      color: var(--text);
+      padding: 6px 12px;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 12px;
+    }
+    .r4-menu button:hover { background: rgba(255,255,255,.06); }
+    .r4-menu .r4-menu-divider {
+      height: 1px;
+      background: var(--border);
+      margin: 4px 0;
+    }
+
     /* Legend */
     /* Occurrence stats floating panel */
     .occ-stats {
@@ -873,6 +917,11 @@
         roster: 'Roster',
         rosterAdd: 'Add name...',
         rosterEmpty: 'No members yet',
+        r4Toggle: 'Toggle R4',
+        r4ThisCell: 'This cell only',
+        r4AllCells: 'All "{name}" cells',
+        r4Remove: 'Remove R4',
+        r4RemoveAll: 'Remove from all "{name}"',
       },
       ua: {
         title: 'Розклад',
@@ -899,6 +948,11 @@
         roster: 'Склад',
         rosterAdd: 'Додати нікнейм...',
         rosterEmpty: 'Поки немає гравців',
+        r4Toggle: 'Позначити R4',
+        r4ThisCell: 'Тільки ця клітинка',
+        r4AllCells: 'Усі клітинки "{name}"',
+        r4Remove: 'Зняти R4',
+        r4RemoveAll: 'Зняти з усіх "{name}"',
       },
       fr: {
         title: 'Programme',
@@ -925,6 +979,11 @@
         roster: 'Effectif',
         rosterAdd: 'Ajouter un nom...',
         rosterEmpty: 'Aucun membre',
+        r4Toggle: 'Basculer R4',
+        r4ThisCell: 'Cette cellule seulement',
+        r4AllCells: 'Toutes les cellules "{name}"',
+        r4Remove: 'Retirer R4',
+        r4RemoveAll: 'Retirer de tous "{name}"',
       },
     };
 
@@ -965,7 +1024,7 @@
     function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
 
     function newRow(group) {
-      return { id: uid(), group: group || uid(), date: '', conductor: '', vip: '' };
+      return { id: uid(), group: group || uid(), date: '', conductor: '', vip: '', r4c: false, r4v: false };
     }
 
     function cloneRows(r) { return JSON.parse(JSON.stringify(r)); }
@@ -977,8 +1036,12 @@
         const raw = localStorage.getItem(DATA_KEY);
         if (raw) {
           rows = JSON.parse(raw);
-          // Migrate old data without group field
-          rows.forEach(r => { if (!r.group) r.group = r.id; });
+          // Migrate old data
+          rows.forEach(r => {
+            if (!r.group) r.group = r.id;
+            if (r.r4c === undefined) r.r4c = false;
+            if (r.r4v === undefined) r.r4v = false;
+          });
           return;
         }
       } catch {}
@@ -1302,12 +1365,6 @@
       return 'occ-' + Math.min(n, 5);
     }
 
-    function renderOccValue(value, placeholder, counts) {
-      if (!value) return `<span class="placeholder">${escapeHtml(placeholder)}</span>`;
-      const cls = occClass(value, counts);
-      const safe = escapeHtml(value);
-      return cls ? `<span class="${cls}">${safe}</span>` : safe;
-    }
 
     function renderOccStats(generalCounts, cCounts, vCounts) {
       const panel = document.getElementById('occStats');
@@ -1400,6 +1457,18 @@
       // Decide if row is in window for coloring
       function inWin(idx) { return w && w.windowIndices.has(idx); }
 
+      // Render cell with optional R4 badge
+      function cellHtml(value, placeholder, isR4, counts) {
+        const r4Tag = isR4 ? '<span class="r4-badge">R4</span>' : '';
+        if (!value) return `<span class="placeholder">${escapeHtml(placeholder)}</span>`;
+        if (counts) {
+          const cls = occClass(value, counts);
+          const safe = escapeHtml(value);
+          return (cls ? `<span class="${cls}">${safe}</span>` : safe) + r4Tag;
+        }
+        return escapeHtml(value) + r4Tag;
+      }
+
       let html = '';
       let i = 0;
       while (i < rows.length) {
@@ -1421,8 +1490,8 @@
 
         html += `<tr${rowClasses(i)} data-id="${row.id}">`;
         html += `<td${span > 1 ? ` rowspan="${span}"` : ''}><div class="cell" data-field="date" data-index="${i}">${dateDisplay}</div></td>`;
-        html += `<td><div class="cell" data-field="conductor" data-index="${i}">${inWin(i) ? renderOccValue(row.conductor, t('conductor'), gCounts) : (row.conductor ? escapeHtml(row.conductor) : `<span class="placeholder">${escapeHtml(t('conductor'))}</span>`)}</div></td>`;
-        html += `<td><div class="cell" data-field="vip" data-index="${i}">${inWin(i) ? renderOccValue(row.vip, t('vip'), gCounts) : (row.vip ? escapeHtml(row.vip) : `<span class="placeholder">${escapeHtml(t('vip'))}</span>`)}</div></td>`;
+        html += `<td><div class="cell${row.r4c ? ' cell-r4' : ''}" data-field="conductor" data-index="${i}">${cellHtml(row.conductor, t('conductor'), row.r4c, inWin(i) ? gCounts : null)}</div></td>`;
+        html += `<td><div class="cell${row.r4v ? ' cell-r4' : ''}" data-field="vip" data-index="${i}">${cellHtml(row.vip, t('vip'), row.r4v, inWin(i) ? gCounts : null)}</div></td>`;
         html += `<td><div class="row-actions">`;
         html += `<button class="btn-subrow" data-index="${i}" title="${t('addSubRow')}"><svg width="12" height="12" viewBox="0 0 16 16"><path d="M8 1a1 1 0 0 1 1 1v5h5a1 1 0 1 1 0 2H9v5a1 1 0 1 1-2 0V9H2a1 1 0 0 1 0-2h5V2a1 1 0 0 1 1-1z"/></svg></button>`;
         html += `<button class="btn-delete" data-index="${i}" title="Delete">&times;</button>`;
@@ -1432,8 +1501,8 @@
           const si = groupRows[k];
           const sr = rows[si];
           html += `<tr${rowClasses(si, 'subrow')} data-id="${sr.id}">`;
-          html += `<td><div class="cell" data-field="conductor" data-index="${si}">${inWin(si) ? renderOccValue(sr.conductor, t('conductor'), gCounts) : (sr.conductor ? escapeHtml(sr.conductor) : `<span class="placeholder">${escapeHtml(t('conductor'))}</span>`)}</div></td>`;
-          html += `<td><div class="cell" data-field="vip" data-index="${si}">${inWin(si) ? renderOccValue(sr.vip, t('vip'), gCounts) : (sr.vip ? escapeHtml(sr.vip) : `<span class="placeholder">${escapeHtml(t('vip'))}</span>`)}</div></td>`;
+          html += `<td><div class="cell${sr.r4c ? ' cell-r4' : ''}" data-field="conductor" data-index="${si}">${cellHtml(sr.conductor, t('conductor'), sr.r4c, inWin(si) ? gCounts : null)}</div></td>`;
+          html += `<td><div class="cell${sr.r4v ? ' cell-r4' : ''}" data-field="vip" data-index="${si}">${cellHtml(sr.vip, t('vip'), sr.r4v, inWin(si) ? gCounts : null)}</div></td>`;
           html += `<td><div class="row-actions">`;
           html += `<button class="btn-subrow" data-index="${si}" title="${t('addSubRow')}"><svg width="12" height="12" viewBox="0 0 16 16"><path d="M8 1a1 1 0 0 1 1 1v5h5a1 1 0 1 1 0 2H9v5a1 1 0 1 1-2 0V9H2a1 1 0 0 1 0-2h5V2a1 1 0 0 1 1-1z"/></svg></button>`;
           html += `<button class="btn-delete" data-index="${si}" title="Delete">&times;</button>`;
@@ -1539,9 +1608,14 @@
           const group = rows[index].group;
           rows.forEach(r => { if (r.group === group) r.date = val; });
         }
-        // Auto-add to roster
+        // Auto-add to roster + R4 auto-detect
         if ((field === 'conductor' || field === 'vip') && val) {
           addToRoster(val);
+          const rKey = val.trim().toLowerCase();
+          const r4Field = field === 'conductor' ? 'r4c' : 'r4v';
+          if (roster[rKey] && roster[rKey].r4) {
+            rows[index][r4Field] = true;
+          }
           renderRoster();
         }
         saveData();
@@ -1848,6 +1922,123 @@
         clearTimeout(longPressTimer);
         longPressTimer = null;
         if (dragging || touchReady) endDrag();
+      });
+    })();
+
+    // ── R4 context menu ──────────────────────────────────
+    (function() {
+      let menu = null;
+
+      function closeMenu() {
+        if (menu) { menu.remove(); menu = null; }
+      }
+
+      function setR4(index, field, value) {
+        const r4Key = field === 'conductor' ? 'r4c' : 'r4v';
+        pushUndo();
+        rows[index][r4Key] = value;
+        // Update roster R4 flag
+        const name = (rows[index][field] || '').trim().toLowerCase();
+        if (name && roster[name]) {
+          // Set roster R4 if any cell has R4, unset if none do
+          roster[name].r4 = rows.some(r => {
+            const c = (r.conductor || '').trim().toLowerCase();
+            const v = (r.vip || '').trim().toLowerCase();
+            return (c === name && r.r4c) || (v === name && r.r4v);
+          });
+          saveRoster();
+        }
+        saveData();
+        renderTable();
+        renderRoster();
+      }
+
+      function setR4All(name, field, value) {
+        const key = name.trim().toLowerCase();
+        pushUndo();
+        rows.forEach(r => {
+          if (field === 'conductor' && (r.conductor || '').trim().toLowerCase() === key) r.r4c = value;
+          if (field === 'vip' && (r.vip || '').trim().toLowerCase() === key) r.r4v = value;
+        });
+        // Also update the other field if same name appears there
+        rows.forEach(r => {
+          if (field !== 'conductor' && (r.conductor || '').trim().toLowerCase() === key) r.r4c = value;
+          if (field !== 'vip' && (r.vip || '').trim().toLowerCase() === key) r.r4v = value;
+        });
+        if (roster[key]) { roster[key].r4 = value; saveRoster(); }
+        saveData();
+        renderTable();
+        renderRoster();
+      }
+
+      function showR4Menu(x, y, index, field) {
+        closeMenu();
+        const row = rows[index];
+        const name = field === 'conductor' ? row.conductor : row.vip;
+        if (!name || !name.trim()) return;
+
+        const r4Key = field === 'conductor' ? 'r4c' : 'r4v';
+        const hasR4 = row[r4Key];
+
+        menu = document.createElement('div');
+        menu.className = 'r4-menu';
+        menu.style.left = x + 'px';
+        menu.style.top = y + 'px';
+
+        if (hasR4) {
+          const btnThis = document.createElement('button');
+          btnThis.textContent = t('r4Remove');
+          btnThis.addEventListener('click', () => { closeMenu(); setR4(index, field, false); });
+          menu.appendChild(btnThis);
+
+          const divider = document.createElement('div');
+          divider.className = 'r4-menu-divider';
+          menu.appendChild(divider);
+
+          const btnAll = document.createElement('button');
+          btnAll.textContent = t('r4RemoveAll').replace('{name}', name.trim());
+          btnAll.addEventListener('click', () => { closeMenu(); setR4All(name, field, false); });
+          menu.appendChild(btnAll);
+        } else {
+          const btnThis = document.createElement('button');
+          btnThis.textContent = t('r4ThisCell');
+          btnThis.addEventListener('click', () => { closeMenu(); setR4(index, field, true); });
+          menu.appendChild(btnThis);
+
+          const divider = document.createElement('div');
+          divider.className = 'r4-menu-divider';
+          menu.appendChild(divider);
+
+          const btnAll = document.createElement('button');
+          btnAll.textContent = t('r4AllCells').replace('{name}', name.trim());
+          btnAll.addEventListener('click', () => { closeMenu(); setR4All(name, field, true); });
+          menu.appendChild(btnAll);
+        }
+
+        document.body.appendChild(menu);
+
+        // Keep menu in viewport
+        const rect = menu.getBoundingClientRect();
+        if (rect.right > window.innerWidth) menu.style.left = (x - rect.width) + 'px';
+        if (rect.bottom > window.innerHeight) menu.style.top = (y - rect.height) + 'px';
+      }
+
+      tbody.addEventListener('contextmenu', (e) => {
+        const cell = e.target.closest('.cell[data-field="conductor"], .cell[data-field="vip"]');
+        if (!cell) return;
+        const index = parseInt(cell.dataset.index);
+        const field = cell.dataset.field;
+        const name = rows[index][field];
+        if (!name || !name.trim()) return;
+        e.preventDefault();
+        showR4Menu(e.clientX, e.clientY, index, field);
+      });
+
+      document.addEventListener('click', (e) => {
+        if (menu && !menu.contains(e.target)) closeMenu();
+      });
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') closeMenu();
       });
     })();
 
