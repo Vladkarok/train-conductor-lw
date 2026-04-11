@@ -672,13 +672,16 @@ function startEdit(cell) {
       const group = rows[index].group;
       rows.forEach(r => { if (r.group === group) r.date = val; });
     }
-    // Auto-add to roster + R4 auto-detect
-    if ((field === 'conductor' || field === 'vip') && val) {
-      addToRoster(val);
-      const rKey = val.trim().toLowerCase();
+    // Auto-add to roster + R4 auto-detect (clear stale flag first)
+    if (field === 'conductor' || field === 'vip') {
       const r4Field = field === 'conductor' ? 'r4c' : 'r4v';
-      if (roster[rKey] && roster[rKey].r4) {
-        rows[index][r4Field] = true;
+      rows[index][r4Field] = false; // clear old R4 state
+      if (val) {
+        addToRoster(val);
+        const rKey = val.trim().toLowerCase();
+        if (roster[rKey] && roster[rKey].r4) {
+          rows[index][r4Field] = true;
+        }
       }
       renderRoster();
     }

@@ -1,6 +1,38 @@
 // ── Import / Export ─────────────────────────────────
 
+// Strip CSV quotes: "value" → value, "" → "
+function unquote(s) {
+  s = s.trim();
+  if (s.length >= 2 && s[0] === '"' && s[s.length - 1] === '"') {
+    s = s.slice(1, -1).replace(/""/g, '"');
+  }
+  return s;
+}
+
+// Try parsing as JSON share file (from share modal download)
+function tryParseShareJson(text) {
+  try {
+    const obj = JSON.parse(text);
+    if (obj && Array.isArray(obj.rows)) return obj;
+  } catch {}
+  return null;
+}
+
 function parseScheduleData(text) {
+  // Check if it's a JSON share file
+  const json = tryParseShareJson(text);
+  if (json) {
+    return json.rows.map(r => ({
+      id: r.id || uid(),
+      group: r.group || uid(),
+      date: r.date || '',
+      conductor: r.conductor || '',
+      vip: r.vip || '',
+      r4c: !!r.r4c,
+      r4v: !!r.r4v
+    }));
+  }
+
   const lines = text.split(/\r?\n/).filter(l => l.trim());
   if (!lines.length) return null;
 
@@ -8,7 +40,7 @@ function parseScheduleData(text) {
   const delimiter = hasTab ? '\t' : ',';
 
   let startIdx = 0;
-  const firstCols = lines[0].split(delimiter).map(c => c.trim().toLowerCase());
+  const firstCols = lines[0].split(delimiter).map(c => unquote(c).toLowerCase());
   const headerWords = ['date', 'conductor', 'vip', 'дата', 'провідник', 'chef'];
   if (firstCols.some(c => headerWords.some(h => c.includes(h)))) {
     startIdx = 1;
@@ -18,7 +50,7 @@ function parseScheduleData(text) {
   let currentGroup = null;
 
   for (let i = startIdx; i < lines.length; i++) {
-    const cols = lines[i].split(delimiter).map(c => c.trim());
+    const cols = lines[i].split(delimiter).map(c => unquote(c));
     const rawDate = cols[0] || '';
     const conductor = cols[1] || '';
     const vip = cols[2] || '';
@@ -149,6 +181,9 @@ document.getElementById('importScheduleBtn').addEventListener('click', () => {
       flashButton(document.getElementById('importScheduleBtn'), 'importError');
       return;
     }
+    // Check if JSON share file included roster
+    const jsonData = tryParseShareJson(result.data);
+
     pushUndo();
     if (result.mode === 'replace') {
       rows.length = 0;
@@ -157,6 +192,14 @@ document.getElementById('importScheduleBtn').addEventListener('click', () => {
       parsed.forEach(r => rows.push(r));
     }
     saveData();
+
+    // Restore roster from JSON share if present
+    if (jsonData && jsonData.roster) {
+      if (result.mode === 'replace') {
+        Object.keys(roster).forEach(k => delete roster[k]);
+      }
+      Object.keys(jsonData.roster).forEach(k => { roster[k] = jsonData.roster[k]; });
+    }
     syncRosterFromTable();
     saveRoster();
     renderTable();
