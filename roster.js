@@ -1,5 +1,6 @@
 // ── Roster ──────────────────────────────────────────
 const ROSTER_KEY = 'schedule_roster';
+const ROSTER_VIS_KEY = 'schedule_roster_vis';
 let roster = {};
 let rosterVisible = false;
 
@@ -8,6 +9,9 @@ function loadRoster() {
     const raw = localStorage.getItem(ROSTER_KEY);
     if (raw) roster = JSON.parse(raw);
   } catch {}
+  rosterVisible = localStorage.getItem(ROSTER_VIS_KEY) === '1';
+  document.getElementById('rosterToggle').classList.toggle('active', rosterVisible);
+  renderRoster();
 }
 function saveRoster() { localStorage.setItem(ROSTER_KEY, JSON.stringify(roster)); }
 
@@ -237,6 +241,7 @@ function renderRoster() {
 // ── Roster controls ─────────────────────────────────
 document.getElementById('rosterToggle').addEventListener('click', () => {
   rosterVisible = !rosterVisible;
+  localStorage.setItem(ROSTER_VIS_KEY, rosterVisible ? '1' : '0');
   document.getElementById('rosterToggle').classList.toggle('active', rosterVisible);
   renderRoster();
 });
