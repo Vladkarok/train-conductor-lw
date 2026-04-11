@@ -59,6 +59,10 @@ const TRANSLATIONS = {
     shareLoadConfirm: 'This link contains shared data. Load it? (replaces current data)',
     shareYes: 'Load',
     shareNo: 'Cancel',
+    shareWarn: 'URL is very long ({size}). Some apps may truncate it. Use "Download .json" for reliable sharing.',
+    shareDownload: 'Download .json',
+    downloadSchedule: 'Download CSV',
+    downloadRoster: 'Download roster',
     hintsTips: 'Tips',
     hintsDismiss: 'Got it',
     hintR4: 'Right-click (long-press on mobile) a name for R4 marking',
@@ -126,6 +130,10 @@ const TRANSLATIONS = {
     shareLoadConfirm: 'Це посилання містить дані. Завантажити? (замінить поточні)',
     shareYes: 'Завантажити',
     shareNo: 'Скасувати',
+    shareWarn: 'URL дуже довгий ({size}). Деякі додатки можуть обрізати його. Використовуйте "Завантажити .json".',
+    shareDownload: 'Завантажити .json',
+    downloadSchedule: 'Завантажити CSV',
+    downloadRoster: 'Завантажити склад',
     hintsTips: 'Підказки',
     hintsDismiss: 'Зрозуміло',
     hintR4: 'ПКМ (довге натискання на мобільному) на імені для позначки R4',
@@ -193,6 +201,10 @@ const TRANSLATIONS = {
     shareLoadConfirm: 'Ce lien contient des données. Les charger ? (remplace les données actuelles)',
     shareYes: 'Charger',
     shareNo: 'Annuler',
+    shareWarn: "L'URL est très long ({size}). Certaines applis peuvent le tronquer. Utilisez « Télécharger .json ».",
+    shareDownload: 'Télécharger .json',
+    downloadSchedule: 'Télécharger CSV',
+    downloadRoster: "Télécharger l'effectif",
     hintsTips: 'Astuces',
     hintsDismiss: 'Compris',
     hintR4: 'Clic droit (appui long sur mobile) sur un nom pour marquer R4',
@@ -240,6 +252,40 @@ function applyLang() {
   renderRoster();
 }
 
+// ── Clipboard helper ─────────────────────────────────
+function copyToClipboard(text) {
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    return navigator.clipboard.writeText(text).catch(() => fallbackCopy(text));
+  }
+  return fallbackCopy(text);
+}
+
+function fallbackCopy(text) {
+  return new Promise((resolve, reject) => {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.cssText = 'position:fixed;left:-9999px;top:-9999px';
+    document.body.appendChild(ta);
+    ta.select();
+    try {
+      document.execCommand('copy') ? resolve() : reject(new Error('copy failed'));
+    } catch (e) { reject(e); }
+    finally { ta.remove(); }
+  });
+}
+
+// ── File download helper ─────────────────────────────
+function downloadFile(filename, content, mime) {
+  const blob = new Blob([content], { type: mime || 'text/plain;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => { a.remove(); URL.revokeObjectURL(url); }, 100);
+}
+
 // ── Data ──────────────────────────────────────────────
 let rows = [];
 
@@ -285,8 +331,26 @@ const undoStack = [];
 const redoStack = [];
 const MAX_HISTORY = 50;
 
+function cloneRoster() { return JSON.parse(JSON.stringify(roster)); }
+
+function makeSnapshot() {
+  return { rows: cloneRows(rows), roster: cloneRoster() };
+}
+
+function applySnapshot(snap) {
+  rows.length = 0;
+  snap.rows.forEach(r => rows.push(r));
+  // Restore roster
+  Object.keys(roster).forEach(k => delete roster[k]);
+  Object.keys(snap.roster).forEach(k => { roster[k] = snap.roster[k]; });
+  saveData();
+  saveRoster();
+  renderTable();
+  renderRoster();
+}
+
 function pushUndo() {
-  undoStack.push(cloneRows(rows));
+  undoStack.push(makeSnapshot());
   if (undoStack.length > MAX_HISTORY) undoStack.shift();
   redoStack.length = 0;
   updateUndoRedoButtons();
@@ -294,19 +358,15 @@ function pushUndo() {
 
 function undo() {
   if (undoStack.length === 0) return;
-  redoStack.push(cloneRows(rows));
-  rows = undoStack.pop();
-  saveData();
-  renderTable();
+  redoStack.push(makeSnapshot());
+  applySnapshot(undoStack.pop());
   updateUndoRedoButtons();
 }
 
 function redo() {
   if (redoStack.length === 0) return;
-  undoStack.push(cloneRows(rows));
-  rows = redoStack.pop();
-  saveData();
-  renderTable();
+  undoStack.push(makeSnapshot());
+  applySnapshot(redoStack.pop());
   updateUndoRedoButtons();
 }
 
@@ -763,7 +823,7 @@ document.getElementById('exportBtn').addEventListener('click', () => {
   }).join('\n');
   const text = header + '\n' + body;
 
-  navigator.clipboard.writeText(text).then(() => {
+  copyToClipboard(text).then(() => {
     const btn = document.getElementById('exportBtn');
     const orig = btn.innerHTML;
     btn.innerHTML = '&#10003;';

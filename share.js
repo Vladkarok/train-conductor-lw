@@ -109,6 +109,8 @@ function showShareConfirm() {
 }
 
 // ── Share modal ────────────────────────────────────
+const SHARE_WARN_THRESHOLD = 4000;
+
 function updateShareLink() {
   const includeRoster = document.getElementById('shareIncludeRoster').checked;
   const payload = buildSharePayload(includeRoster);
@@ -116,6 +118,14 @@ function updateShareLink() {
   document.getElementById('shareLinkInput').value = url;
   document.getElementById('shareSize').textContent =
     t('shareSize').replace('{size}', url.length.toLocaleString());
+
+  const warn = document.getElementById('shareWarn');
+  if (url.length > SHARE_WARN_THRESHOLD) {
+    warn.textContent = t('shareWarn').replace('{size}', url.length.toLocaleString());
+    warn.classList.add('visible');
+  } else {
+    warn.classList.remove('visible');
+  }
 }
 
 function openShareModal() {
@@ -124,6 +134,7 @@ function openShareModal() {
   document.getElementById('shareModalDesc').textContent = t('shareDesc');
   document.getElementById('shareIncludeRosterLabel').textContent = t('shareIncludeRoster');
   document.getElementById('shareCopyBtn').textContent = t('shareCopy');
+  document.getElementById('shareDownloadBtn').textContent = t('shareDownload');
   document.getElementById('shareModalClose').textContent = t('shareClose');
 
   updateShareLink();
@@ -132,6 +143,7 @@ function openShareModal() {
   function cleanup() {
     overlay.classList.remove('visible');
     document.getElementById('shareCopyBtn').removeEventListener('click', onCopy);
+    document.getElementById('shareDownloadBtn').removeEventListener('click', onDownload);
     document.getElementById('shareModalClose').removeEventListener('click', onClose);
     document.getElementById('shareIncludeRoster').removeEventListener('change', onChange);
     overlay.removeEventListener('click', onOverlay);
@@ -140,7 +152,7 @@ function openShareModal() {
 
   function onCopy() {
     const input = document.getElementById('shareLinkInput');
-    navigator.clipboard.writeText(input.value).then(() => {
+    copyToClipboard(input.value).then(() => {
       const btn = document.getElementById('shareCopyBtn');
       btn.textContent = t('shareCopied');
       btn.classList.add('btn-success');
@@ -151,12 +163,20 @@ function openShareModal() {
     });
   }
 
+  function onDownload() {
+    const includeRoster = document.getElementById('shareIncludeRoster').checked;
+    const payload = buildSharePayload(includeRoster);
+    const json = JSON.stringify(payload, null, 2);
+    downloadFile('schedule-share.json', json, 'application/json');
+  }
+
   function onChange() { updateShareLink(); }
   function onClose() { cleanup(); }
   function onOverlay(e) { if (e.target === overlay) cleanup(); }
   function onKey(e) { if (e.key === 'Escape') cleanup(); }
 
   document.getElementById('shareCopyBtn').addEventListener('click', onCopy);
+  document.getElementById('shareDownloadBtn').addEventListener('click', onDownload);
   document.getElementById('shareModalClose').addEventListener('click', onClose);
   document.getElementById('shareIncludeRoster').addEventListener('change', onChange);
   overlay.addEventListener('click', onOverlay);

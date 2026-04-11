@@ -882,8 +882,15 @@ body.occ-drag-ready tr.in-window.window-bottom > td {
 .share-size {
   font-size: 11px;
   color: var(--muted);
-  margin: 2px 0 8px;
+  margin: 2px 0 4px;
 }
+.share-warn {
+  font-size: 11px;
+  color: var(--danger);
+  margin: 0 0 8px;
+  display: none;
+}
+.share-warn.visible { display: block; }
 .share-options {
   display: flex;
   gap: 12px;
@@ -1003,6 +1010,11 @@ body.occ-drag-ready tr.in-window.window-bottom > td {
 }
 .roster-action-btn svg,
 .th-action-btn svg { display: block; }
+.th-actions-group {
+  display: flex;
+  gap: 2px;
+  justify-content: flex-end;
+}
 
 /* Responsive */
 @media (max-width: 640px) {

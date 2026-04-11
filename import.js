@@ -184,17 +184,55 @@ document.getElementById('importRosterBtn').addEventListener('click', () => {
   });
 });
 
-// ── Roster export ──────────────────────────────────
+// ── Roster export (clipboard) ──────────────────────
 document.getElementById('rosterExportBtn').addEventListener('click', () => {
   const names = Object.values(roster).map(r => r.display).sort((a, b) =>
     a.localeCompare(b, undefined, { sensitivity: 'base' })
   );
   if (!names.length) return;
-  navigator.clipboard.writeText(names.join('\n')).then(() => {
+  copyToClipboard(names.join('\n')).then(() => {
     const btn = document.getElementById('rosterExportBtn');
     const orig = btn.innerHTML;
-    btn.textContent = '✓';
+    btn.innerHTML = '&#10003;';
     btn.style.color = 'var(--green)';
     setTimeout(() => { btn.innerHTML = orig; btn.style.color = ''; }, 1500);
   });
+});
+
+// ── Schedule download (CSV) ────────────────────────
+function buildScheduleCsv() {
+  const header = [t('date'), t('conductor'), t('vip')].join(',');
+  const seenGroups = new Set();
+  const body = rows.map(r => {
+    const showDate = !seenGroups.has(r.group);
+    seenGroups.add(r.group);
+    // Wrap fields in quotes to handle commas in names
+    return [showDate ? r.date : '', r.conductor, r.vip]
+      .map(v => '"' + v.replace(/"/g, '""') + '"').join(',');
+  }).join('\n');
+  return header + '\n' + body;
+}
+
+document.getElementById('downloadScheduleBtn').addEventListener('click', () => {
+  const csv = buildScheduleCsv();
+  downloadFile('schedule.csv', '\uFEFF' + csv, 'text/csv;charset=utf-8');
+  const btn = document.getElementById('downloadScheduleBtn');
+  const orig = btn.innerHTML;
+  btn.innerHTML = '&#10003;';
+  btn.style.color = 'var(--green)';
+  setTimeout(() => { btn.innerHTML = orig; btn.style.color = ''; }, 1500);
+});
+
+// ── Roster download (TXT) ──────────────────────────
+document.getElementById('downloadRosterBtn').addEventListener('click', () => {
+  const names = Object.values(roster).map(r => r.display).sort((a, b) =>
+    a.localeCompare(b, undefined, { sensitivity: 'base' })
+  );
+  if (!names.length) return;
+  downloadFile('roster.txt', names.join('\n'), 'text/plain;charset=utf-8');
+  const btn = document.getElementById('downloadRosterBtn');
+  const orig = btn.innerHTML;
+  btn.innerHTML = '&#10003;';
+  btn.style.color = 'var(--green)';
+  setTimeout(() => { btn.innerHTML = orig; btn.style.color = ''; }, 1500);
 });
