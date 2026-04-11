@@ -781,6 +781,166 @@ body.occ-drag-ready tr.in-window.window-bottom > td {
   flex-shrink: 0;
 }
 
+/* ── Import modal ──────────────────────────────── */
+.btn-import {
+  background: var(--pill-bg);
+  border-color: var(--border);
+  color: var(--muted);
+}
+.btn-import:hover {
+  color: var(--text);
+  border-color: var(--accent-border);
+}
+.btn-success {
+  color: var(--green) !important;
+  border-color: var(--green) !important;
+}
+.modal-wide { max-width: 520px; }
+.import-mode {
+  display: flex;
+  gap: 16px;
+  margin: 10px 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+.import-mode label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+}
+.import-mode input[type="radio"] {
+  accent-color: var(--accent-solid);
+}
+.import-textarea {
+  width: 100%;
+  background: var(--input-bg);
+  border: 1px solid var(--input-border);
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 12px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  padding: 10px 12px;
+  resize: vertical;
+  outline: none;
+  line-height: 1.5;
+}
+.import-textarea:focus { border-color: var(--accent-solid); }
+.import-textarea::placeholder { color: var(--muted); opacity: .5; }
+.import-file-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 10px 0 16px;
+}
+.import-file-label {
+  background: var(--pill-bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--muted);
+  font-size: 12px;
+  padding: 5px 10px;
+  cursor: pointer;
+  transition: all .15s;
+}
+.import-file-label:hover { color: var(--text); border-color: var(--accent-border); }
+.import-file-name {
+  font-size: 11px;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── Hints ────────────────────────────────────── */
+.hints-toggle {
+  background: var(--pill-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--muted);
+  font-size: 12px;
+  padding: 5px 8px;
+  cursor: pointer;
+  transition: all .15s;
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.hints-toggle:hover { color: var(--accent-solid); border-color: var(--accent-border); }
+.hints-toggle svg { fill: currentColor; }
+.hints-dot {
+  display: none;
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  width: 7px;
+  height: 7px;
+  background: var(--accent-solid);
+  border-radius: 50%;
+  animation: hintPulse 1.5s ease-in-out infinite;
+}
+.hints-dot.visible { display: block; }
+@keyframes hintPulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: .5; transform: scale(1.4); }
+}
+.hints-panel {
+  display: none;
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  width: 300px;
+  background: linear-gradient(180deg, #1a2433, #131b28);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px 16px;
+  font-size: 12px;
+  z-index: 90;
+  box-shadow: 0 8px 32px rgba(0,0,0,.4);
+}
+.hints-panel.visible { display: block; }
+.hints-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  margin-bottom: 8px;
+}
+.hint-item {
+  color: var(--text);
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border);
+  line-height: 1.5;
+}
+.hint-item:last-child { border-bottom: none; }
+.hints-dismiss {
+  display: block;
+  margin: 10px auto 0;
+  background: var(--accent);
+  border: 1px solid var(--accent-border);
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 12px;
+  font-family: inherit;
+  padding: 6px 16px;
+  cursor: pointer;
+  transition: background .15s;
+}
+.hints-dismiss:hover { background: rgba(125,211,252,.26); }
+
+/* ── Roster export button ─────────────────────── */
+.roster-export-btn {
+  background: none;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 14px;
+  padding: 0 4px;
+  transition: color .15s;
+}
+.roster-export-btn:hover { color: var(--accent-solid); }
+
 /* Responsive */
 @media (max-width: 640px) {
   body { padding: 16px 8px 32px; }
