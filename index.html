@@ -436,6 +436,10 @@
       background-position: right 8px center;
     }
     .occ-dropdown:focus { border-color: var(--accent-solid); }
+    .occ-dropdown option {
+      background: #1a2233;
+      color: var(--text);
+    }
     .occ-nav button {
       background: var(--pill-bg);
       color: var(--muted);
@@ -453,11 +457,23 @@
     .occ-nav { display: flex; gap: 2px; }
 
     /* Window overlay on rows */
-    tr.in-window > td { background: rgba(125,211,252,.06); }
+    tr.in-window > td { background: rgba(125,211,252,.06); cursor: grab; }
     tr.in-window.window-top > td { box-shadow: inset 0 2px 0 rgba(125,211,252,.22); }
     tr.in-window.window-bottom > td { box-shadow: inset 0 -2px 0 rgba(125,211,252,.22); }
     tr.in-window.window-top.window-bottom > td {
       box-shadow: inset 0 2px 0 rgba(125,211,252,.22), inset 0 -2px 0 rgba(125,211,252,.22);
+    }
+    body.occ-dragging, body.occ-dragging * { cursor: grabbing !important; }
+    body.occ-dragging { user-select: none; }
+    body.occ-drag-ready tr.in-window > td {
+      background: rgba(125,211,252,.12);
+      transition: background .15s;
+    }
+    body.occ-drag-ready tr.in-window.window-top > td {
+      box-shadow: inset 0 2px 0 rgba(125,211,252,.45);
+    }
+    body.occ-drag-ready tr.in-window.window-bottom > td {
+      box-shadow: inset 0 -2px 0 rgba(125,211,252,.45);
     }
 
     /* Occurrence frequency colors */
@@ -479,6 +495,90 @@
     .occ-legend.visible { display: flex; }
     .occ-legend-item { display: flex; align-items: center; gap: 4px; }
     .occ-legend-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+
+    /* Occurrence stats floating panel */
+    .occ-stats {
+      display: none;
+      position: fixed;
+      right: max(12px, calc((100vw - 720px) / 2 - 240px));
+      top: 80px;
+      width: 220px;
+      max-height: calc(100dvh - 100px);
+      overflow-y: auto;
+      background: var(--card-bg);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px;
+      font-size: 12px;
+      z-index: 50;
+      scrollbar-width: thin;
+      scrollbar-color: var(--border) transparent;
+    }
+    .occ-stats.visible { display: block; }
+    .occ-stats-title {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .5px;
+      margin-bottom: 10px;
+    }
+    .occ-stats-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 5px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .occ-stats-row:last-child { border-bottom: none; }
+    .occ-stats-name {
+      font-weight: 600;
+      flex: 1;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      margin-right: 8px;
+    }
+    .occ-stats-counts {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      color: var(--muted);
+      flex-shrink: 0;
+    }
+    .occ-stats-total {
+      font-weight: 700;
+      min-width: 18px;
+      text-align: center;
+    }
+    .occ-stats-badge {
+      padding: 1px 4px;
+      border-radius: 4px;
+      font-size: 10px;
+      font-weight: 500;
+    }
+    .occ-stats-badge.cond { background: rgba(125,211,252,.12); color: var(--accent-solid); }
+    .occ-stats-badge.vip { background: rgba(74,222,128,.12); color: var(--green); }
+    .occ-stats-empty {
+      color: var(--muted);
+      font-style: italic;
+      padding: 8px 0;
+    }
+    @media (max-width: 1060px) {
+      .occ-stats {
+        position: static;
+        width: 100%;
+        max-width: 720px;
+        max-height: none;
+        margin: 0 auto 12px;
+        right: auto;
+        top: auto;
+      }
+    }
 
     /* Inline add row button under table */
     .add-row-inline {
@@ -563,6 +663,11 @@
       <span class="occ-legend-item"><span class="occ-legend-dot" style="background:#c084fc"></span> 5x+</span>
     </div>
 
+    <div class="occ-stats" id="occStats">
+      <div class="occ-stats-title" id="occStatsTitle">Statistics</div>
+      <div id="occStatsBody"></div>
+    </div>
+
     <div class="card">
       <table>
         <thead>
@@ -622,6 +727,10 @@
         redoTooltip: 'Redo (Ctrl+Y)',
         addSubRow: 'Add sub-row',
         occToggle: 'Occurrences',
+        occStats: 'Statistics',
+        occNoData: 'No repeated names',
+        occCond: 'C',
+        occVip: 'V',
       },
       ua: {
         title: 'Розклад',
@@ -641,6 +750,10 @@
         redoTooltip: 'Повторити (Ctrl+Y)',
         addSubRow: 'Додати під-рядок',
         occToggle: 'Повторення',
+        occStats: 'Статистика',
+        occNoData: 'Немає повторів',
+        occCond: 'Д',
+        occVip: 'VIP',
       },
       fr: {
         title: 'Programme',
@@ -660,6 +773,10 @@
         redoTooltip: 'Rétablir (Ctrl+Y)',
         addSubRow: 'Ajouter sous-ligne',
         occToggle: 'Occurrences',
+        occStats: 'Statistiques',
+        occNoData: 'Aucun nom répété',
+        occCond: 'C',
+        occVip: 'V',
       },
     };
 
@@ -924,6 +1041,20 @@
       return counts;
     }
 
+    // General (combined) counts for coloring — same name in conductor or vip counts once per cell
+    function buildGeneralCounts(activeGroups) {
+      const counts = new Map();
+      activeGroups.forEach(g => {
+        g.indices.forEach(i => {
+          const c = (rows[i].conductor || '').trim().toLowerCase();
+          const v = (rows[i].vip || '').trim().toLowerCase();
+          if (c) counts.set(c, (counts.get(c) || 0) + 1);
+          if (v) counts.set(v, (counts.get(v) || 0) + 1);
+        });
+      });
+      return counts;
+    }
+
     function occClass(value, counts) {
       if (!counts || !value) return '';
       const n = counts.get(value.trim().toLowerCase()) || 0;
@@ -936,6 +1067,51 @@
       const cls = occClass(value, counts);
       const safe = escapeHtml(value);
       return cls ? `<span class="${cls}">${safe}</span>` : safe;
+    }
+
+    function renderOccStats(generalCounts, cCounts, vCounts) {
+      const panel = document.getElementById('occStats');
+      const body = document.getElementById('occStatsBody');
+      document.getElementById('occStatsTitle').textContent = t('occStats');
+      panel.classList.toggle('visible', occ.enabled);
+      if (!occ.enabled) return;
+
+      // Collect names with general count > 1, preserve original casing
+      const nameMap = new Map(); // lowercase → original display name
+      const addName = (val) => {
+        if (!val) return;
+        const k = val.trim().toLowerCase();
+        if (k && !nameMap.has(k)) nameMap.set(k, val.trim());
+      };
+      rows.forEach(r => { addName(r.conductor); addName(r.vip); });
+
+      const entries = [];
+      for (const [key, display] of nameMap) {
+        const total = generalCounts.get(key) || 0;
+        if (total < 2) continue;
+        const cN = cCounts.get(key) || 0;
+        const vN = vCounts.get(key) || 0;
+        entries.push({ display, total, cN, vN, cls: 'occ-' + Math.min(total, 5) });
+      }
+      entries.sort((a, b) => b.total - a.total || a.display.localeCompare(b.display));
+
+      if (!entries.length) {
+        body.innerHTML = `<div class="occ-stats-empty">${escapeHtml(t('occNoData'))}</div>`;
+        return;
+      }
+
+      const cLabel = t('occCond');
+      const vLabel = t('occVip');
+      body.innerHTML = entries.map(e =>
+        `<div class="occ-stats-row">` +
+          `<span class="occ-stats-name ${e.cls}">${escapeHtml(e.display)}</span>` +
+          `<span class="occ-stats-counts">` +
+            `<span class="occ-stats-total ${e.cls}">${e.total}</span>` +
+            (e.cN ? `<span class="occ-stats-badge cond">${cLabel}${e.cN}</span>` : '') +
+            (e.vN ? `<span class="occ-stats-badge vip">${vLabel}${e.vN}</span>` : '') +
+          `</span>` +
+        `</div>`
+      ).join('');
     }
 
     function syncOccUi(w) {
@@ -960,6 +1136,7 @@
 
     function renderTable() {
       const w = occ.enabled ? getOccWindow() : null;
+      const gCounts = w ? buildGeneralCounts(w.active) : null;
       const cCounts = w ? buildCounts(w.active, 'conductor') : null;
       const vCounts = w ? buildCounts(w.active, 'vip') : null;
 
@@ -1005,8 +1182,8 @@
 
         html += `<tr${rowClasses(i)} data-id="${row.id}">`;
         html += `<td${span > 1 ? ` rowspan="${span}"` : ''}><div class="cell" data-field="date" data-index="${i}">${dateDisplay}</div></td>`;
-        html += `<td><div class="cell" data-field="conductor" data-index="${i}">${inWin(i) ? renderOccValue(row.conductor, t('conductor'), cCounts) : (row.conductor ? escapeHtml(row.conductor) : `<span class="placeholder">${escapeHtml(t('conductor'))}</span>`)}</div></td>`;
-        html += `<td><div class="cell" data-field="vip" data-index="${i}">${inWin(i) ? renderOccValue(row.vip, t('vip'), vCounts) : (row.vip ? escapeHtml(row.vip) : `<span class="placeholder">${escapeHtml(t('vip'))}</span>`)}</div></td>`;
+        html += `<td><div class="cell" data-field="conductor" data-index="${i}">${inWin(i) ? renderOccValue(row.conductor, t('conductor'), gCounts) : (row.conductor ? escapeHtml(row.conductor) : `<span class="placeholder">${escapeHtml(t('conductor'))}</span>`)}</div></td>`;
+        html += `<td><div class="cell" data-field="vip" data-index="${i}">${inWin(i) ? renderOccValue(row.vip, t('vip'), gCounts) : (row.vip ? escapeHtml(row.vip) : `<span class="placeholder">${escapeHtml(t('vip'))}</span>`)}</div></td>`;
         html += `<td><div class="row-actions">`;
         html += `<button class="btn-subrow" data-index="${i}" title="${t('addSubRow')}"><svg width="12" height="12" viewBox="0 0 16 16"><path d="M8 1a1 1 0 0 1 1 1v5h5a1 1 0 1 1 0 2H9v5a1 1 0 1 1-2 0V9H2a1 1 0 0 1 0-2h5V2a1 1 0 0 1 1-1z"/></svg></button>`;
         html += `<button class="btn-delete" data-index="${i}" title="Delete">&times;</button>`;
@@ -1016,8 +1193,8 @@
           const si = groupRows[k];
           const sr = rows[si];
           html += `<tr${rowClasses(si, 'subrow')} data-id="${sr.id}">`;
-          html += `<td><div class="cell" data-field="conductor" data-index="${si}">${inWin(si) ? renderOccValue(sr.conductor, t('conductor'), cCounts) : (sr.conductor ? escapeHtml(sr.conductor) : `<span class="placeholder">${escapeHtml(t('conductor'))}</span>`)}</div></td>`;
-          html += `<td><div class="cell" data-field="vip" data-index="${si}">${inWin(si) ? renderOccValue(sr.vip, t('vip'), vCounts) : (sr.vip ? escapeHtml(sr.vip) : `<span class="placeholder">${escapeHtml(t('vip'))}</span>`)}</div></td>`;
+          html += `<td><div class="cell" data-field="conductor" data-index="${si}">${inWin(si) ? renderOccValue(sr.conductor, t('conductor'), gCounts) : (sr.conductor ? escapeHtml(sr.conductor) : `<span class="placeholder">${escapeHtml(t('conductor'))}</span>`)}</div></td>`;
+          html += `<td><div class="cell" data-field="vip" data-index="${si}">${inWin(si) ? renderOccValue(sr.vip, t('vip'), gCounts) : (sr.vip ? escapeHtml(sr.vip) : `<span class="placeholder">${escapeHtml(t('vip'))}</span>`)}</div></td>`;
           html += `<td><div class="row-actions">`;
           html += `<button class="btn-subrow" data-index="${si}" title="${t('addSubRow')}"><svg width="12" height="12" viewBox="0 0 16 16"><path d="M8 1a1 1 0 0 1 1 1v5h5a1 1 0 1 1 0 2H9v5a1 1 0 1 1-2 0V9H2a1 1 0 0 1 0-2h5V2a1 1 0 0 1 1-1z"/></svg></button>`;
           html += `<button class="btn-delete" data-index="${si}" title="Delete">&times;</button>`;
@@ -1027,6 +1204,7 @@
       }
       tbody.innerHTML = html;
       if (occ.enabled) syncOccUi(getOccWindow());
+      renderOccStats(gCounts, cCounts, vCounts);
     }
 
     // ── Fill hint tooltip ──────────────────────────────────
@@ -1303,6 +1481,128 @@
       const w = getOccWindow();
       if (occ.windowStart < w.total - w.size) { occ.windowStart++; renderTable(); }
     });
+
+    // ── Occurrence window drag ──────────────────────────
+    (function() {
+      let dragging = false, startY = 0, startWinStart = 0, rowHeight = 0;
+      // Touch: long-press to enter drag mode (avoids scroll conflict)
+      let longPressTimer = null, touchReady = false;
+      const LONG_PRESS_MS = 350;
+      const MOVE_THRESHOLD = 8; // px — cancel long-press if finger moves
+
+      function getAvgRowHeight() {
+        const trs = tbody.querySelectorAll('tr.in-window');
+        if (!trs.length) return 36;
+        const first = trs[0].getBoundingClientRect();
+        const last = trs[trs.length - 1].getBoundingClientRect();
+        return (last.bottom - first.top) / trs.length;
+      }
+
+      function startDrag(y) {
+        dragging = true;
+        startY = y;
+        startWinStart = occ.windowStart;
+        rowHeight = getAvgRowHeight();
+        document.body.classList.remove('occ-drag-ready');
+        document.body.classList.add('occ-dragging');
+      }
+
+      function moveDrag(y) {
+        const dy = y - startY;
+        const delta = Math.round(dy / rowHeight);
+        const w = getOccWindow();
+        const maxStart = w.total - w.size;
+        const newStart = Math.max(0, Math.min(startWinStart + delta, maxStart));
+        if (newStart !== occ.windowStart) {
+          occ.windowStart = newStart;
+          renderTable();
+        }
+      }
+
+      function endDrag() {
+        dragging = false;
+        touchReady = false;
+        clearTimeout(longPressTimer);
+        document.body.classList.remove('occ-dragging', 'occ-drag-ready');
+      }
+
+      // ── Mouse (desktop): instant drag ──
+      tbody.addEventListener('mousedown', (e) => {
+        if (!occ.enabled) return;
+        const tr = e.target.closest('tr.in-window');
+        if (!tr) return;
+        if (e.target.closest('button') || e.target.closest('input')) return;
+        startDrag(e.clientY);
+        e.preventDefault();
+      });
+
+      document.addEventListener('mousemove', (e) => {
+        if (!dragging) return;
+        moveDrag(e.clientY);
+      });
+
+      document.addEventListener('mouseup', () => {
+        if (dragging) endDrag();
+      });
+
+      // ── Touch (mobile): long-press → drag ──
+      let touchStartY = 0, touchStartX = 0;
+
+      tbody.addEventListener('touchstart', (e) => {
+        if (!occ.enabled) return;
+        const tr = e.target.closest('tr.in-window');
+        if (!tr) return;
+        if (e.target.closest('button') || e.target.closest('input')) return;
+
+        touchStartY = e.touches[0].clientY;
+        touchStartX = e.touches[0].clientX;
+        touchReady = false;
+
+        // Start long-press timer — visual hint appears, then drag activates
+        longPressTimer = setTimeout(() => {
+          touchReady = true;
+          document.body.classList.add('occ-drag-ready');
+          // Vibrate if supported (subtle haptic feedback)
+          if (navigator.vibrate) navigator.vibrate(30);
+        }, LONG_PRESS_MS);
+      }, { passive: true });
+
+      document.addEventListener('touchmove', (e) => {
+        const t = e.touches[0];
+        // If long-press hasn't fired yet, cancel if finger moved too far (user is scrolling)
+        if (longPressTimer && !touchReady) {
+          const dx = Math.abs(t.clientX - touchStartX);
+          const dy = Math.abs(t.clientY - touchStartY);
+          if (dx > MOVE_THRESHOLD || dy > MOVE_THRESHOLD) {
+            clearTimeout(longPressTimer);
+            longPressTimer = null;
+          }
+          return;
+        }
+        // Long-press activated → start or continue drag
+        if (touchReady && !dragging) {
+          startDrag(t.clientY);
+          // Prevent scroll while dragging
+          e.preventDefault();
+        }
+        if (dragging) {
+          moveDrag(t.clientY);
+          e.preventDefault();
+        }
+      }, { passive: false });
+
+      document.addEventListener('touchend', () => {
+        clearTimeout(longPressTimer);
+        longPressTimer = null;
+        if (dragging || touchReady) endDrag();
+      });
+
+      document.addEventListener('touchcancel', () => {
+        clearTimeout(longPressTimer);
+        longPressTimer = null;
+        if (dragging || touchReady) endDrag();
+      });
+    })();
 
     // ── Language switcher ────────────────────────────────
     document.querySelectorAll('.lang-btn').forEach(btn => {
