@@ -725,7 +725,7 @@ function renderTable() {
     // Insert drag grip after last window row
     const groupIndices = groupRows;
     if (w && groupIndices.some(gi => gi === winLast) && !gripInserted) {
-      html += `<tr class="occ-grip-row"><td colspan="4"><div class="occ-grip" title="Drag to move window"><span class="occ-grip-dots">⋮⋮⋮</span></div></td></tr>`;
+      html += `<tr class="occ-grip-row"><td colspan="4"><div class="occ-grip" title="Drag to move window"><span class="occ-grip-dot"></span><span class="occ-grip-dot"></span><span class="occ-grip-dot"></span></div></td></tr>`;
       gripInserted = true;
     }
     i = j;

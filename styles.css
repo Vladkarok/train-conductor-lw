@@ -415,24 +415,7 @@ tr.subrow td:first-child {
   gap: 4px;
 }
 .occ-extras.visible { display: flex; }
-.occ-dropdown {
-  background: var(--input-bg);
-  border: 1px solid var(--input-border);
-  border-radius: 8px;
-  color: var(--text);
-  font-size: 12px;
-  font-family: inherit;
-  padding: 5px 24px 5px 8px;
-  outline: none;
-  cursor: pointer;
-  -webkit-appearance: none;
-  appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%237b8fad'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 8px center;
-}
-.occ-dropdown:focus { border-color: var(--accent-solid); }
-.occ-custom-input {
+.occ-size-input {
   background: var(--input-bg);
   border: 1px solid var(--input-border);
   border-radius: 8px;
@@ -441,17 +424,13 @@ tr.subrow td:first-child {
   font-family: inherit;
   padding: 5px 6px;
   outline: none;
-  width: 48px;
+  width: 44px;
   text-align: center;
   -moz-appearance: textfield;
 }
-.occ-custom-input::-webkit-outer-spin-button,
-.occ-custom-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
-.occ-custom-input:focus { border-color: var(--accent-solid); }
-.occ-dropdown option {
-  background: #1a2233;
-  color: var(--text);
-}
+.occ-size-input::-webkit-outer-spin-button,
+.occ-size-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.occ-size-input:focus { border-color: var(--accent-solid); }
 .occ-nav button {
   background: var(--pill-bg);
   color: var(--muted);
@@ -620,10 +599,10 @@ body.occ-drag-ready tr.in-window.window-bottom > td {
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 18px;
+  gap: 4px;
+  height: 24px;
   cursor: ns-resize;
-  color: var(--accent-solid);
-  opacity: .5;
+  opacity: .6;
   transition: opacity .15s, background .15s;
   border-top: 2px solid var(--accent-solid);
   user-select: none;
@@ -634,10 +613,11 @@ body.occ-drag-ready tr.in-window.window-bottom > td {
   opacity: 1;
   background: rgba(125,211,252,.08);
 }
-.occ-grip-dots {
-  font-size: 10px;
-  letter-spacing: 2px;
-  line-height: 1;
+.occ-grip-dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--accent-solid);
 }
 
 @media (max-width: 1060px) {

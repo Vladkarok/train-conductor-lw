@@ -112,17 +112,7 @@ function syncOccUi(w) {
   document.getElementById('occToggle').classList.toggle('active', occ.enabled);
   document.getElementById('occToggle').textContent = t('occToggle');
   document.getElementById('occExtras').classList.toggle('visible', occ.enabled);
-  const sel = document.getElementById('occWindow');
-  const customInput = document.getElementById('occCustomInput');
-  const presets = ['7', '14', '21', '30'];
-  if (presets.includes(String(occ.windowSize))) {
-    sel.value = String(occ.windowSize);
-    customInput.style.display = 'none';
-  } else {
-    sel.value = 'custom';
-    customInput.style.display = '';
-    customInput.value = occ.windowSize;
-  }
+  document.getElementById('occWindow').value = occ.windowSize;
   document.getElementById('occUp').disabled = !occ.enabled || occ.windowStart <= 0;
   document.getElementById('occDown').disabled = !occ.enabled || occ.windowStart >= w.total - w.size;
 }
@@ -137,22 +127,6 @@ document.getElementById('occToggle').addEventListener('click', () => {
 });
 
 document.getElementById('occWindow').addEventListener('change', (e) => {
-  const customInput = document.getElementById('occCustomInput');
-  if (e.target.value === 'custom') {
-    customInput.style.display = '';
-    customInput.value = occ.windowSize;
-    customInput.focus();
-    customInput.select();
-    return;
-  }
-  customInput.style.display = 'none';
-  occ.windowSize = parseInt(e.target.value);
-  occ.windowStart = 0;
-  saveOcc();
-  renderTable();
-});
-
-document.getElementById('occCustomInput').addEventListener('change', (e) => {
   const val = parseInt(e.target.value);
   if (val > 0) {
     occ.windowSize = val;
@@ -162,7 +136,7 @@ document.getElementById('occCustomInput').addEventListener('change', (e) => {
   }
 });
 
-document.getElementById('occCustomInput').addEventListener('keydown', (e) => {
+document.getElementById('occWindow').addEventListener('keydown', (e) => {
   if (e.key === 'Enter') { e.target.blur(); }
 });
 
