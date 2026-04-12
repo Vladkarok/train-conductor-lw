@@ -87,7 +87,7 @@ function renderRoster() {
   const vLabel = t('occVip');
   body.innerHTML = entries.map(e =>
     `<div class="roster-row" data-key="${e.key}">` +
-      `<button class="roster-r4-toggle${e.r4 ? ' active' : ''}" data-key="${e.key}" title="R4">R4</button>` +
+      (e.r4 ? `<span class="roster-r4-toggle active">R4</span>` : '') +
       `<span class="roster-name${e.total === 0 ? ' zero' : ''}" data-key="${e.key}">${escapeHtml(e.display)}</span>` +
       `<span class="roster-counts">` +
         `<span class="roster-total${e.total === 0 ? ' zero' : ''}">${e.total}</span>` +
