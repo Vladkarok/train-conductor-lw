@@ -1,6 +1,6 @@
 // ── Hints / Tips ───────────────────────────────────
 const HINTS_SEEN_KEY = 'schedule_hints_seen';
-const HINT_KEYS = ['hintR4', 'hintDrag', 'hintDateFill', 'hintKeyboard', 'hintSubRow'];
+const HINT_KEYS = ['hintR4', 'hintRename', 'hintNotes', 'hintDrag', 'hintDateFill', 'hintKeyboard', 'hintSubRow'];
 
 function renderHints() {
   document.getElementById('hintsTitle').textContent = t('hintsTips');
