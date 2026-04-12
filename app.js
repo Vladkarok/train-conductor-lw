@@ -26,10 +26,10 @@ const TRANSLATIONS = {
     rosterAdd: 'Add name...',
     rosterEmpty: 'No members yet',
     r4Toggle: 'Toggle R4',
-    r4ThisCell: 'This cell only',
-    r4AllCells: 'All "{name}" cells',
-    r4Remove: 'Remove R4',
-    r4RemoveAll: 'Remove from all "{name}"',
+    r4ThisCell: 'Mark R4 — this cell',
+    r4AllCells: 'Mark R4 — all "{name}"',
+    r4Remove: 'Unmark R4 — this cell',
+    r4RemoveAll: 'Unmark R4 — all "{name}"',
     importSchedule: 'Import Schedule',
     importRoster: 'Import Roster',
     importScheduleTitle: 'Import Schedule',
@@ -70,6 +70,9 @@ const TRANSLATIONS = {
     hintDateFill: 'Click a date cell to auto-fill sequential dates',
     hintKeyboard: 'Tab / Enter / Arrow keys to navigate; Ctrl+Z / Y for undo-redo',
     hintSubRow: 'Click + next to a row to add a sub-row under it',
+    rename: 'Rename',
+    renameAll: 'Rename "{name}" everywhere',
+    renamePrompt: 'New name for "{name}":',
   },
   ua: {
     title: 'Розклад',
@@ -97,10 +100,10 @@ const TRANSLATIONS = {
     rosterAdd: 'Додати нікнейм...',
     rosterEmpty: 'Поки немає гравців',
     r4Toggle: 'Позначити R4',
-    r4ThisCell: 'Тільки ця клітинка',
-    r4AllCells: 'Усі клітинки "{name}"',
-    r4Remove: 'Зняти R4',
-    r4RemoveAll: 'Зняти з усіх "{name}"',
+    r4ThisCell: 'Позначити R4 — ця клітинка',
+    r4AllCells: 'Позначити R4 — усі "{name}"',
+    r4Remove: 'Зняти R4 — ця клітинка',
+    r4RemoveAll: 'Зняти R4 — усі "{name}"',
     importSchedule: 'Імпорт розкладу',
     importRoster: 'Імпорт складу',
     importScheduleTitle: 'Імпорт розкладу',
@@ -141,6 +144,9 @@ const TRANSLATIONS = {
     hintDateFill: 'Клікніть на дату для автозаповнення послідовних дат',
     hintKeyboard: 'Tab / Enter / Стрілки для навігації; Ctrl+Z / Y для скасування',
     hintSubRow: 'Натисніть + біля рядка щоб додати під-рядок',
+    rename: 'Перейменувати',
+    renameAll: 'Перейменувати "{name}" всюди',
+    renamePrompt: 'Нове ім\'я для "{name}":',
   },
   fr: {
     title: 'Programme',
@@ -168,10 +174,10 @@ const TRANSLATIONS = {
     rosterAdd: 'Ajouter un nom...',
     rosterEmpty: 'Aucun membre',
     r4Toggle: 'Basculer R4',
-    r4ThisCell: 'Cette cellule seulement',
-    r4AllCells: 'Toutes les cellules "{name}"',
-    r4Remove: 'Retirer R4',
-    r4RemoveAll: 'Retirer de tous "{name}"',
+    r4ThisCell: 'Marquer R4 — cette cellule',
+    r4AllCells: 'Marquer R4 — tous "{name}"',
+    r4Remove: 'Retirer R4 — cette cellule',
+    r4RemoveAll: 'Retirer R4 — tous "{name}"',
     importSchedule: 'Importer programme',
     importRoster: 'Importer effectif',
     importScheduleTitle: 'Importer le programme',
@@ -212,6 +218,9 @@ const TRANSLATIONS = {
     hintDateFill: 'Cliquez sur une date pour remplir automatiquement',
     hintKeyboard: 'Tab / Entrée / Flèches pour naviguer ; Ctrl+Z / Y pour annuler',
     hintSubRow: 'Cliquez + à côté d\'une ligne pour ajouter une sous-ligne',
+    rename: 'Renommer',
+    renameAll: 'Renommer "{name}" partout',
+    renamePrompt: 'Nouveau nom pour "{name}" :',
   },
 };
 
@@ -284,6 +293,52 @@ function downloadFile(filename, content, mime) {
   document.body.appendChild(a);
   a.click();
   setTimeout(() => { a.remove(); URL.revokeObjectURL(url); }, 100);
+}
+
+// ── Global rename ────────────────────────────────────
+function renamePlayer(oldName, newName) {
+  if (!oldName || !newName || oldName === newName) return;
+  const oldKey = oldName.trim().toLowerCase();
+  const newKey = newName.trim().toLowerCase();
+
+  pushUndo();
+  // Update all schedule cells
+  rows.forEach(r => {
+    if ((r.conductor || '').trim().toLowerCase() === oldKey) r.conductor = newName.trim();
+    if ((r.vip || '').trim().toLowerCase() === oldKey) r.vip = newName.trim();
+  });
+  saveData();
+
+  // Update roster entry
+  if (roster[oldKey]) {
+    const entry = roster[oldKey];
+    entry.display = newName.trim();
+    if (oldKey !== newKey) {
+      roster[newKey] = entry;
+      delete roster[oldKey];
+    }
+    saveRoster();
+  }
+
+  renderTable();
+  renderRoster();
+}
+
+function toggleR4Player(name) {
+  const key = name.trim().toLowerCase();
+  if (!roster[key]) return;
+  const newVal = !roster[key].r4;
+  pushUndo();
+  roster[key].r4 = newVal;
+  // Propagate to all cells
+  rows.forEach(r => {
+    if ((r.conductor || '').trim().toLowerCase() === key) r.r4c = newVal;
+    if ((r.vip || '').trim().toLowerCase() === key) r.r4v = newVal;
+  });
+  saveRoster();
+  saveData();
+  renderTable();
+  renderRoster();
 }
 
 // ── Data ──────────────────────────────────────────────

@@ -671,6 +671,28 @@ body.occ-drag-ready tr.in-window.window-bottom > td {
   border-bottom: 1px solid var(--border);
 }
 .roster-row:last-child { border-bottom: none; }
+.roster-r4-toggle {
+  background: var(--pill-bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: 700;
+  font-family: inherit;
+  padding: 1px 4px;
+  cursor: pointer;
+  margin-right: 6px;
+  transition: all .15s;
+  flex-shrink: 0;
+  opacity: .4;
+}
+.roster-r4-toggle:hover { opacity: .8; border-color: var(--accent-border); }
+.roster-r4-toggle.active {
+  background: rgba(251,146,60,.22);
+  border-color: rgba(251,146,60,.5);
+  color: #fb923c;
+  opacity: 1;
+}
 .roster-name {
   flex: 1;
   min-width: 0;
@@ -678,7 +700,12 @@ body.occ-drag-ready tr.in-window.window-bottom > td {
   text-overflow: ellipsis;
   white-space: nowrap;
   margin-right: 6px;
+  cursor: pointer;
+  border-radius: 4px;
+  padding: 1px 4px;
+  transition: background .15s;
 }
+.roster-name:hover { background: var(--pill-bg); }
 .roster-name.zero { color: var(--danger); opacity: .7; }
 .roster-counts {
   display: flex;

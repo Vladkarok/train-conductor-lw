@@ -74,8 +74,8 @@ function renderRoster() {
   const vLabel = t('occVip');
   body.innerHTML = entries.map(e =>
     `<div class="roster-row" data-key="${e.key}">` +
-      (e.r4 ? `<span class="roster-r4">R4</span>` : '') +
-      `<span class="roster-name${e.total === 0 ? ' zero' : ''}">${escapeHtml(e.display)}</span>` +
+      `<button class="roster-r4-toggle${e.r4 ? ' active' : ''}" data-key="${e.key}" title="R4">R4</button>` +
+      `<span class="roster-name${e.total === 0 ? ' zero' : ''}" data-key="${e.key}">${escapeHtml(e.display)}</span>` +
       `<span class="roster-counts">` +
         `<span class="roster-total${e.total === 0 ? ' zero' : ''}">${e.total}</span>` +
         (e.cond ? `<span class="occ-stats-badge cond">${cLabel} ${e.cond}</span>` : '') +
@@ -173,6 +173,22 @@ function renderRoster() {
       menu.appendChild(btnAll);
     }
 
+    // Rename option
+    const divRename = document.createElement('div');
+    divRename.className = 'r4-menu-divider';
+    menu.appendChild(divRename);
+
+    const btnRename = document.createElement('button');
+    btnRename.textContent = t('renameAll').replace('{name}', name.trim());
+    btnRename.addEventListener('click', () => {
+      closeMenu();
+      const newName = prompt(t('renamePrompt').replace('{name}', name.trim()), name.trim());
+      if (newName && newName.trim() && newName.trim() !== name.trim()) {
+        renamePlayer(name.trim(), newName.trim());
+      }
+    });
+    menu.appendChild(btnRename);
+
     document.body.appendChild(menu);
 
     const rect = menu.getBoundingClientRect();
@@ -264,11 +280,34 @@ document.getElementById('rosterInput').addEventListener('keydown', (e) => {
 });
 
 document.getElementById('rosterBody').addEventListener('click', (e) => {
+  // Remove
   const removeBtn = e.target.closest('.roster-remove');
   if (removeBtn) {
     const key = removeBtn.dataset.key;
+    pushUndo();
     delete roster[key];
     saveRoster();
     renderRoster();
+    return;
+  }
+
+  // R4 toggle
+  const r4Btn = e.target.closest('.roster-r4-toggle');
+  if (r4Btn) {
+    const key = r4Btn.dataset.key;
+    if (roster[key]) toggleR4Player(roster[key].display);
+    return;
+  }
+
+  // Click name → rename
+  const nameEl = e.target.closest('.roster-name');
+  if (nameEl) {
+    const key = nameEl.dataset.key;
+    if (!roster[key]) return;
+    const oldName = roster[key].display;
+    const newName = prompt(t('renamePrompt').replace('{name}', oldName), oldName);
+    if (newName && newName.trim() && newName.trim() !== oldName) {
+      renamePlayer(oldName, newName.trim());
+    }
   }
 });
