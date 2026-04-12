@@ -112,7 +112,17 @@ function syncOccUi(w) {
   document.getElementById('occToggle').classList.toggle('active', occ.enabled);
   document.getElementById('occToggle').textContent = t('occToggle');
   document.getElementById('occExtras').classList.toggle('visible', occ.enabled);
-  document.getElementById('occWindow').value = String(occ.windowSize);
+  const sel = document.getElementById('occWindow');
+  const customInput = document.getElementById('occCustomInput');
+  const presets = ['7', '14', '21', '30'];
+  if (presets.includes(String(occ.windowSize))) {
+    sel.value = String(occ.windowSize);
+    customInput.style.display = 'none';
+  } else {
+    sel.value = 'custom';
+    customInput.style.display = '';
+    customInput.value = occ.windowSize;
+  }
   document.getElementById('occUp').disabled = !occ.enabled || occ.windowStart <= 0;
   document.getElementById('occDown').disabled = !occ.enabled || occ.windowStart >= w.total - w.size;
 }
@@ -127,10 +137,33 @@ document.getElementById('occToggle').addEventListener('click', () => {
 });
 
 document.getElementById('occWindow').addEventListener('change', (e) => {
+  const customInput = document.getElementById('occCustomInput');
+  if (e.target.value === 'custom') {
+    customInput.style.display = '';
+    customInput.value = occ.windowSize;
+    customInput.focus();
+    customInput.select();
+    return;
+  }
+  customInput.style.display = 'none';
   occ.windowSize = parseInt(e.target.value);
   occ.windowStart = 0;
   saveOcc();
   renderTable();
+});
+
+document.getElementById('occCustomInput').addEventListener('change', (e) => {
+  const val = parseInt(e.target.value);
+  if (val > 0) {
+    occ.windowSize = val;
+    occ.windowStart = 0;
+    saveOcc();
+    renderTable();
+  }
+});
+
+document.getElementById('occCustomInput').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') { e.target.blur(); }
 });
 
 document.getElementById('occUp').addEventListener('click', () => {
@@ -186,9 +219,14 @@ document.getElementById('occDown').addEventListener('click', () => {
     saveOcc();
   }
 
-  // Mouse (desktop): instant drag
+  // Mouse (desktop): instant drag on in-window rows or grip
   tbody.addEventListener('mousedown', (e) => {
     if (!occ.enabled) return;
+    if (e.target.closest('.occ-grip') || e.target.closest('.occ-grip-row')) {
+      startDrag(e.clientY);
+      e.preventDefault();
+      return;
+    }
     const tr = e.target.closest('tr.in-window');
     if (!tr) return;
     if (e.target.closest('button') || e.target.closest('input')) return;
@@ -205,15 +243,27 @@ document.getElementById('occDown').addEventListener('click', () => {
     if (dragging) endDrag();
   });
 
-  // Touch (mobile): long-press → drag
+  // Touch (mobile): grip = instant drag, in-window rows = long-press → drag
   let touchStartY = 0, touchStartX = 0;
+  let gripTouch = false;
 
   tbody.addEventListener('touchstart', (e) => {
     if (!occ.enabled) return;
+
+    // Grip: instant drag, no long-press
+    if (e.target.closest('.occ-grip') || e.target.closest('.occ-grip-row')) {
+      gripTouch = true;
+      touchStartY = e.touches[0].clientY;
+      startDrag(e.touches[0].clientY);
+      e.preventDefault();
+      return;
+    }
+
     const tr = e.target.closest('tr.in-window');
     if (!tr) return;
     if (e.target.closest('button') || e.target.closest('input')) return;
 
+    gripTouch = false;
     touchStartY = e.touches[0].clientY;
     touchStartX = e.touches[0].clientX;
     touchReady = false;
@@ -223,7 +273,7 @@ document.getElementById('occDown').addEventListener('click', () => {
       document.body.classList.add('occ-drag-ready');
       if (navigator.vibrate) navigator.vibrate(30);
     }, LONG_PRESS_MS);
-  }, { passive: true });
+  }, { passive: false });
 
   document.addEventListener('touchmove', (e) => {
     const t = e.touches[0];
@@ -249,12 +299,14 @@ document.getElementById('occDown').addEventListener('click', () => {
   document.addEventListener('touchend', () => {
     clearTimeout(longPressTimer);
     longPressTimer = null;
+    gripTouch = false;
     if (dragging || touchReady) endDrag();
   });
 
   document.addEventListener('touchcancel', () => {
     clearTimeout(longPressTimer);
     longPressTimer = null;
+    gripTouch = false;
     if (dragging || touchReady) endDrag();
   });
 })();

@@ -432,6 +432,22 @@ tr.subrow td:first-child {
   background-position: right 8px center;
 }
 .occ-dropdown:focus { border-color: var(--accent-solid); }
+.occ-custom-input {
+  background: var(--input-bg);
+  border: 1px solid var(--input-border);
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 12px;
+  font-family: inherit;
+  padding: 5px 6px;
+  outline: none;
+  width: 48px;
+  text-align: center;
+  -moz-appearance: textfield;
+}
+.occ-custom-input::-webkit-outer-spin-button,
+.occ-custom-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.occ-custom-input:focus { border-color: var(--accent-solid); }
 .occ-dropdown option {
   background: #1a2233;
   color: var(--text);
@@ -595,6 +611,35 @@ body.occ-drag-ready tr.in-window.window-bottom > td {
   font-style: italic;
   padding: 8px 0;
 }
+/* ── Occurrence drag grip ─────────────────────── */
+.occ-grip-row td {
+  padding: 0 !important;
+  border: none !important;
+}
+.occ-grip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 18px;
+  cursor: ns-resize;
+  color: var(--accent-solid);
+  opacity: .5;
+  transition: opacity .15s, background .15s;
+  border-top: 2px solid var(--accent-solid);
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+}
+.occ-grip:hover, .occ-grip:active {
+  opacity: 1;
+  background: rgba(125,211,252,.08);
+}
+.occ-grip-dots {
+  font-size: 10px;
+  letter-spacing: 2px;
+  line-height: 1;
+}
+
 @media (max-width: 1060px) {
   .occ-stats {
     position: static;

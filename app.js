@@ -653,7 +653,7 @@ function renderTable() {
   const cCounts = w ? buildCounts(w.active, 'conductor') : null;
   const vCounts = w ? buildCounts(w.active, 'vip') : null;
 
-  let winFirst = -1, winLast = -1;
+  let winFirst = -1, winLast = -1, gripInserted = false;
   if (w) {
     const allWin = [...w.windowIndices];
     winFirst = Math.min(...allWin);
@@ -721,6 +721,12 @@ function renderTable() {
       html += `<button class="btn-subrow" data-index="${si}" title="${t('addSubRow')}"><svg width="12" height="12" viewBox="0 0 16 16"><path d="M8 1a1 1 0 0 1 1 1v5h5a1 1 0 1 1 0 2H9v5a1 1 0 1 1-2 0V9H2a1 1 0 0 1 0-2h5V2a1 1 0 0 1 1-1z"/></svg></button>`;
       html += `<button class="btn-delete" data-index="${si}" title="Delete">&times;</button>`;
       html += `</div></td></tr>`;
+    }
+    // Insert drag grip after last window row
+    const groupIndices = groupRows;
+    if (w && groupIndices.some(gi => gi === winLast) && !gripInserted) {
+      html += `<tr class="occ-grip-row"><td colspan="4"><div class="occ-grip" title="Drag to move window"><span class="occ-grip-dots">⋮⋮⋮</span></div></td></tr>`;
+      gripInserted = true;
     }
     i = j;
   }
