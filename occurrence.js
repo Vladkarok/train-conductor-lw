@@ -171,6 +171,7 @@ document.getElementById('occDown').addEventListener('click', () => {
 (function() {
   let dragging = false, startY = 0, startWinStart = 0, rowHeight = 0;
   let longPressTimer = null, touchReady = false, activeTouchId = null, dragMoved = false;
+  let dragLiveRender = true, pendingWindowStart = 0;
   let suppressClickUntil = 0;
   const LONG_PRESS_MS = 350;
   const MOVE_THRESHOLD = 8;
@@ -183,12 +184,15 @@ document.getElementById('occDown').addEventListener('click', () => {
     return (last.bottom - first.top) / trs.length;
   }
 
-  function startDrag(y) {
+  function startDrag(y, options) {
+    const opts = options || {};
     dragging = true;
     startY = y;
     startWinStart = occ.windowStart;
     rowHeight = getAvgRowHeight();
     dragMoved = false;
+    dragLiveRender = opts.liveRender !== false;
+    pendingWindowStart = occ.windowStart;
     document.body.classList.remove('occ-drag-ready');
     document.body.classList.add('occ-dragging');
   }
@@ -197,16 +201,25 @@ document.getElementById('occDown').addEventListener('click', () => {
     const dy = y - startY;
     const delta = Math.round(dy / rowHeight);
     if (!delta) return;
-    const changed = setOccWindowStart(startWinStart + delta, { save: true });
+    const { maxStart } = getOccBounds();
+    const nextStart = Math.max(0, Math.min(startWinStart + delta, maxStart));
+    const changed = nextStart !== pendingWindowStart;
     if (changed) {
+      pendingWindowStart = nextStart;
       dragMoved = true;
-      startWinStart = occ.windowStart;
+      if (dragLiveRender) {
+        setOccWindowStart(nextStart, { save: false });
+      }
+      startWinStart = nextStart;
       startY += delta * rowHeight;
       rowHeight = getAvgRowHeight();
     }
   }
 
   function endDrag() {
+    if (!dragLiveRender && pendingWindowStart !== occ.windowStart) {
+      setOccWindowStart(pendingWindowStart, { save: false });
+    }
     dragging = false;
     touchReady = false;
     activeTouchId = null;
@@ -262,7 +275,7 @@ document.getElementById('occDown').addEventListener('click', () => {
     if (e.target.closest('.occ-grip') || e.target.closest('.occ-grip-row')) {
       activeTouchId = touch.identifier;
       touchStartY = touch.clientY;
-      startDrag(touch.clientY);
+      startDrag(touch.clientY, { liveRender: false });
       e.preventDefault();
       return;
     }
@@ -280,7 +293,7 @@ document.getElementById('occDown').addEventListener('click', () => {
     longPressTimer = setTimeout(() => {
       touchReady = true;
       document.body.classList.add('occ-drag-ready');
-      startDrag(touchStartY);
+      startDrag(touchStartY, { liveRender: false });
       if (navigator.vibrate) navigator.vibrate(30);
       longPressTimer = null;
     }, LONG_PRESS_MS);
