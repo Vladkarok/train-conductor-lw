@@ -263,9 +263,13 @@ function applyLang() {
 
 // ── Name extraction (strip notes) ────────────────────
 // "Smith (sick)" → "Smith", "Alice [backup]" → "Alice", "Bob {note}" → "Bob"
+// "Dave "why"" → "Dave", but "O'Connor" stays "O'Connor" (no space before quote)
 function extractName(val) {
   if (!val) return '';
-  return val.replace(/\s*[\(\[\{\"\'"""''].*/g, '').trim();
+  return val
+    .replace(/\s*[\(\[\{].*$/, '')
+    .replace(/\s+["""'''"'].*/g, '')
+    .trim();
 }
 function nameKey(val) { return extractName(val).toLowerCase(); }
 
@@ -323,13 +327,19 @@ function renamePlayer(oldName, newName) {
   });
   saveData();
 
-  // Update roster entry
+  // Update roster entry — merge if target exists
   if (roster[oldKey]) {
-    const entry = roster[oldKey];
-    entry.display = newName.trim();
+    const oldEntry = roster[oldKey];
     if (oldKey !== newKey) {
-      roster[newKey] = entry;
+      if (roster[newKey]) {
+        // Merge: keep R4 if either had it
+        roster[newKey].r4 = roster[newKey].r4 || oldEntry.r4;
+      } else {
+        roster[newKey] = { display: newName.trim(), r4: oldEntry.r4 };
+      }
       delete roster[oldKey];
+    } else {
+      oldEntry.display = newName.trim();
     }
     saveRoster();
   }

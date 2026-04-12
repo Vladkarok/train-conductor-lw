@@ -9,6 +9,21 @@ function loadRoster() {
     const raw = localStorage.getItem(ROSTER_KEY);
     if (raw) roster = JSON.parse(raw);
   } catch {}
+  // Migrate legacy keys that contain notes (e.g. "alice (backup)" → "alice")
+  let migrated = false;
+  Object.keys(roster).forEach(k => {
+    const nk = nameKey(roster[k].display);
+    if (nk && nk !== k) {
+      if (roster[nk]) {
+        roster[nk].r4 = roster[nk].r4 || roster[k].r4;
+      } else {
+        roster[nk] = { display: extractName(roster[k].display), r4: roster[k].r4 };
+      }
+      delete roster[k];
+      migrated = true;
+    }
+  });
+  if (migrated) saveRoster();
   rosterVisible = localStorage.getItem(ROSTER_VIS_KEY) === '1';
   document.getElementById('rosterToggle').classList.toggle('active', rosterVisible);
   renderRoster();
