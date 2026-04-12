@@ -429,9 +429,32 @@ function loadData() {
 
 function ensureNewestFirst(arr) {
   const dates = arr.filter(r => r.date).map(r => parseDate(r.date)).filter(Boolean);
-  if (dates.length >= 2 && dates[0] < dates[dates.length - 1]) {
-    arr.reverse();
-  }
+  if (dates.length < 2 || dates[0] >= dates[dates.length - 1]) return;
+  // Reverse groups as units, preserving sub-row order within each group
+  const groups = [];
+  let current = [];
+  let currentGroup = null;
+  arr.forEach(r => {
+    if (r.group !== currentGroup) {
+      if (current.length) groups.push(current);
+      current = [r];
+      currentGroup = r.group;
+    } else {
+      current.push(r);
+    }
+  });
+  if (current.length) groups.push(current);
+  groups.reverse();
+  // Within each group, ensure the row with a date (leader) stays first
+  groups.forEach(g => {
+    const leaderIdx = g.findIndex(r => r.date);
+    if (leaderIdx > 0) {
+      const [leader] = g.splice(leaderIdx, 1);
+      g.unshift(leader);
+    }
+  });
+  arr.length = 0;
+  groups.forEach(g => g.forEach(r => arr.push(r)));
 }
 
 // Get all rows in the same group
