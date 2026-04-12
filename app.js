@@ -979,12 +979,12 @@ document.getElementById('addRowInline').addEventListener('click', addNewRow);
 
 // ── Export ────────────────────────────────────────────
 document.getElementById('exportBtn').addEventListener('click', () => {
-  const header = [t('date'), t('conductor'), t('vip')].join('\t');
+  const header = [t('date'), t('conductor'), t('vip'), 'R4C', 'R4V'].join('\t');
   const seenGroups = new Set();
   const body = rows.map(r => {
     const showDate = !seenGroups.has(r.group);
     seenGroups.add(r.group);
-    return [showDate ? r.date : '', r.conductor, r.vip].join('\t');
+    return [showDate ? r.date : '', r.conductor, r.vip, r.r4c ? '1' : '', r.r4v ? '1' : ''].join('\t');
   }).join('\n');
   const text = header + '\n' + body;
 

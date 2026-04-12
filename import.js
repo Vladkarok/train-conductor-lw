@@ -85,6 +85,8 @@ function parseScheduleData(text) {
     const rawDate = cols[0] || '';
     const conductor = cols[1] || '';
     const vip = cols[2] || '';
+    const r4c = !!(cols[3] && cols[3].trim());
+    const r4v = !!(cols[4] && cols[4].trim());
 
     const date = rawDate ? normalizeDate(rawDate) : '';
 
@@ -98,8 +100,8 @@ function parseScheduleData(text) {
       date: date,
       conductor: conductor,
       vip: vip,
-      r4c: false,
-      r4v: false
+      r4c: r4c,
+      r4v: r4v
     });
   }
   return result.length ? result : null;
@@ -276,13 +278,13 @@ document.getElementById('rosterExportBtn').addEventListener('click', () => {
 
 // ── Schedule download (CSV) ────────────────────────
 function buildScheduleCsv() {
-  const header = [t('date'), t('conductor'), t('vip')].join(',');
+  const header = [t('date'), t('conductor'), t('vip'), 'R4C', 'R4V'].join(',');
   const seenGroups = new Set();
   const body = rows.map(r => {
     const showDate = !seenGroups.has(r.group);
     seenGroups.add(r.group);
     // Wrap fields in quotes to handle commas in names
-    return [showDate ? r.date : '', r.conductor, r.vip]
+    return [showDate ? r.date : '', r.conductor, r.vip, r.r4c ? '1' : '', r.r4v ? '1' : '']
       .map(v => '"' + v.replace(/"/g, '""') + '"').join(',');
   }).join('\n');
   return header + '\n' + body;
