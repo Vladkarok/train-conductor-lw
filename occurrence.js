@@ -21,15 +21,32 @@ function getOrderedGroups() {
   return groups;
 }
 
+function getOccBounds() {
+  const total = getOrderedGroups().length;
+  const size = Math.min(occ.windowSize, total);
+  const maxStart = Math.max(0, total - size);
+  return { total, size, maxStart };
+}
+
 function getOccWindow() {
   const groups = getOrderedGroups();
-  const total = groups.length;
-  const size = Math.min(occ.windowSize, total);
-  occ.windowStart = Math.max(0, Math.min(occ.windowStart, total - size));
+  const { total, size, maxStart } = getOccBounds();
+  occ.windowStart = Math.max(0, Math.min(occ.windowStart, maxStart));
   const active = groups.slice(occ.windowStart, occ.windowStart + size);
   const windowIndices = new Set();
   active.forEach(g => g.indices.forEach(i => windowIndices.add(i)));
   return { groups, total, size, active, windowIndices };
+}
+
+function setOccWindowStart(start, options) {
+  const opts = options || {};
+  const { maxStart } = getOccBounds();
+  const nextStart = Math.max(0, Math.min(start, maxStart));
+  if (nextStart === occ.windowStart) return false;
+  occ.windowStart = nextStart;
+  if (opts.save) saveOcc();
+  if (opts.render !== false) renderTable();
+  return true;
 }
 
 function buildCounts(activeGroups, field) {
@@ -141,18 +158,20 @@ document.getElementById('occWindow').addEventListener('keydown', (e) => {
 });
 
 document.getElementById('occUp').addEventListener('click', () => {
-  if (occ.windowStart > 0) { occ.windowStart--; saveOcc(); renderTable(); }
+  if (!occ.enabled) return;
+  setOccWindowStart(occ.windowStart - 1, { save: true });
 });
 
 document.getElementById('occDown').addEventListener('click', () => {
-  const w = getOccWindow();
-  if (occ.windowStart < w.total - w.size) { occ.windowStart++; saveOcc(); renderTable(); }
+  if (!occ.enabled) return;
+  setOccWindowStart(occ.windowStart + 1, { save: true });
 });
 
 // ── Occurrence window drag ──────────────────────────
 (function() {
   let dragging = false, startY = 0, startWinStart = 0, rowHeight = 0;
-  let longPressTimer = null, touchReady = false;
+  let longPressTimer = null, touchReady = false, activeTouchId = null, dragMoved = false;
+  let suppressClickUntil = 0;
   const LONG_PRESS_MS = 350;
   const MOVE_THRESHOLD = 8;
 
@@ -169,6 +188,7 @@ document.getElementById('occDown').addEventListener('click', () => {
     startY = y;
     startWinStart = occ.windowStart;
     rowHeight = getAvgRowHeight();
+    dragMoved = false;
     document.body.classList.remove('occ-drag-ready');
     document.body.classList.add('occ-dragging');
   }
@@ -176,21 +196,33 @@ document.getElementById('occDown').addEventListener('click', () => {
   function moveDrag(y) {
     const dy = y - startY;
     const delta = Math.round(dy / rowHeight);
-    const w = getOccWindow();
-    const maxStart = w.total - w.size;
-    const newStart = Math.max(0, Math.min(startWinStart + delta, maxStart));
-    if (newStart !== occ.windowStart) {
-      occ.windowStart = newStart;
-      renderTable();
+    if (!delta) return;
+    const changed = setOccWindowStart(startWinStart + delta, { save: true });
+    if (changed) {
+      dragMoved = true;
+      startWinStart = occ.windowStart;
+      startY += delta * rowHeight;
+      rowHeight = getAvgRowHeight();
     }
   }
 
   function endDrag() {
     dragging = false;
     touchReady = false;
+    activeTouchId = null;
     clearTimeout(longPressTimer);
+    longPressTimer = null;
+    if (dragMoved) suppressClickUntil = Date.now() + 400;
     document.body.classList.remove('occ-dragging', 'occ-drag-ready');
     saveOcc();
+  }
+
+  function getTouchById(touchList, id) {
+    if (id === null) return touchList[0] || null;
+    for (let i = 0; i < touchList.length; i++) {
+      if (touchList[i].identifier === id) return touchList[i];
+    }
+    return null;
   }
 
   // Mouse (desktop): instant drag on in-window rows or grip
@@ -219,16 +251,18 @@ document.getElementById('occDown').addEventListener('click', () => {
 
   // Touch (mobile): grip = instant drag, in-window rows = long-press → drag
   let touchStartY = 0, touchStartX = 0;
-  let gripTouch = false;
 
   tbody.addEventListener('touchstart', (e) => {
     if (!occ.enabled) return;
+    if (activeTouchId !== null) return;
+    const touch = e.touches[0];
+    if (!touch) return;
 
     // Grip: instant drag, no long-press
     if (e.target.closest('.occ-grip') || e.target.closest('.occ-grip-row')) {
-      gripTouch = true;
-      touchStartY = e.touches[0].clientY;
-      startDrag(e.touches[0].clientY);
+      activeTouchId = touch.identifier;
+      touchStartY = touch.clientY;
+      startDrag(touch.clientY);
       e.preventDefault();
       return;
     }
@@ -237,32 +271,33 @@ document.getElementById('occDown').addEventListener('click', () => {
     if (!tr) return;
     if (e.target.closest('button') || e.target.closest('input')) return;
 
-    gripTouch = false;
-    touchStartY = e.touches[0].clientY;
-    touchStartX = e.touches[0].clientX;
+    activeTouchId = touch.identifier;
+    touchStartY = touch.clientY;
+    touchStartX = touch.clientX;
     touchReady = false;
+    clearTimeout(longPressTimer);
 
     longPressTimer = setTimeout(() => {
       touchReady = true;
       document.body.classList.add('occ-drag-ready');
+      startDrag(touchStartY);
       if (navigator.vibrate) navigator.vibrate(30);
+      longPressTimer = null;
     }, LONG_PRESS_MS);
   }, { passive: false });
 
   document.addEventListener('touchmove', (e) => {
-    const t = e.touches[0];
+    const t = getTouchById(e.touches, activeTouchId);
+    if (!t) return;
     if (longPressTimer && !touchReady) {
       const dx = Math.abs(t.clientX - touchStartX);
       const dy = Math.abs(t.clientY - touchStartY);
       if (dx > MOVE_THRESHOLD || dy > MOVE_THRESHOLD) {
         clearTimeout(longPressTimer);
         longPressTimer = null;
+        activeTouchId = null;
       }
       return;
-    }
-    if (touchReady && !dragging) {
-      startDrag(t.clientY);
-      e.preventDefault();
     }
     if (dragging) {
       moveDrag(t.clientY);
@@ -270,17 +305,24 @@ document.getElementById('occDown').addEventListener('click', () => {
     }
   }, { passive: false });
 
-  document.addEventListener('touchend', () => {
+  document.addEventListener('touchend', (e) => {
+    const changedTouch = getTouchById(e.changedTouches, activeTouchId);
     clearTimeout(longPressTimer);
     longPressTimer = null;
-    gripTouch = false;
-    if (dragging || touchReady) endDrag();
+    if (dragging || touchReady || changedTouch) endDrag();
   });
 
-  document.addEventListener('touchcancel', () => {
+  document.addEventListener('touchcancel', (e) => {
+    const changedTouch = getTouchById(e.changedTouches, activeTouchId);
     clearTimeout(longPressTimer);
     longPressTimer = null;
-    gripTouch = false;
-    if (dragging || touchReady) endDrag();
+    if (dragging || touchReady || changedTouch) endDrag();
   });
+
+  document.addEventListener('click', (e) => {
+    if (Date.now() <= suppressClickUntil) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+  }, true);
 })();

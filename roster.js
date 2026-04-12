@@ -42,10 +42,33 @@ function addToRoster(name) {
 }
 
 function syncRosterFromTable() {
+  const r4Keys = new Set();
   rows.forEach(r => {
-    if (r.conductor) addToRoster(r.conductor);
-    if (r.vip) addToRoster(r.vip);
+    if (r.conductor) {
+      addToRoster(r.conductor);
+      if (r.r4c) {
+        const key = nameKey(r.conductor);
+        if (key) r4Keys.add(key);
+      }
+    }
+    if (r.vip) {
+      addToRoster(r.vip);
+      if (r.r4v) {
+        const key = nameKey(r.vip);
+        if (key) r4Keys.add(key);
+      }
+    }
   });
+
+  let changed = false;
+  r4Keys.forEach(key => {
+    if (roster[key] && !roster[key].r4) {
+      roster[key].r4 = true;
+      changed = true;
+    }
+  });
+
+  if (changed) saveRoster();
 }
 
 function getRosterStats() {
