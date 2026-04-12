@@ -269,6 +269,10 @@ tr.subrow td:first-child {
   color: var(--muted);
   text-align: center;
   opacity: .7;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
 }
 .github-link {
   display: inline-flex;
@@ -1041,6 +1045,67 @@ body.occ-drag-ready tr.in-window.window-bottom > td {
   display: flex;
   gap: 2px;
   justify-content: flex-end;
+}
+
+/* ── Reset ───────────────────────────────────── */
+.reset-btn {
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  color: var(--muted);
+  font-family: inherit;
+  font-size: 11px;
+  padding: 4px 10px;
+  cursor: pointer;
+  opacity: .6;
+  transition: all .2s;
+}
+.reset-btn:hover {
+  color: var(--danger);
+  border-color: var(--danger);
+  opacity: 1;
+}
+.reset-modal { max-width: 400px; }
+.reset-modal-title { color: var(--danger); }
+.reset-modal-desc {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
+  margin-bottom: 12px;
+}
+.reset-modal-confirm-text {
+  color: var(--text);
+  font-size: 13px;
+  margin-bottom: 6px;
+}
+.reset-confirm-input {
+  width: 100%;
+  background: var(--input-bg);
+  border: 1px solid var(--input-border);
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 14px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  padding: 8px 10px;
+  outline: none;
+  letter-spacing: 2px;
+  text-align: center;
+  margin-bottom: 14px;
+  box-sizing: border-box;
+}
+.reset-confirm-input:focus { border-color: var(--danger); }
+.btn-danger {
+  background: rgba(239,68,68,.2);
+  border-color: rgba(239,68,68,.5);
+  color: #ef4444;
+  font-weight: 600;
+}
+.btn-danger:hover:not(:disabled) {
+  background: rgba(239,68,68,.35);
+}
+.btn-danger:disabled {
+  opacity: .4;
+  cursor: not-allowed;
 }
 
 /* Responsive */

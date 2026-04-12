@@ -67,7 +67,7 @@ const TRANSLATIONS = {
     hintsDismiss: 'Got it',
     hintR4: 'Right-click (long-press on mobile) a name for R4 marking or rename',
     hintRename: 'Click a name in Roster to rename it everywhere',
-    hintNotes: 'Add notes after a name: Smith (sick) — notes are preserved, name still matches',
+    hintNotes: 'Add notes after a name: Smith (Birthday) — notes are preserved, name still matches',
     hintDrag: 'Drag the highlighted occurrence rows to slide the window',
     hintDateFill: 'Click a date cell to auto-fill sequential dates',
     hintKeyboard: 'Tab / Enter / Arrow keys to navigate; Ctrl+Z / Y for undo-redo',
@@ -75,6 +75,12 @@ const TRANSLATIONS = {
     rename: 'Rename',
     renameAll: 'Rename "{name}" everywhere',
     renamePrompt: 'New name for "{name}":',
+    resetBtn: 'Reset',
+    resetTitle: 'Reset all data',
+    resetDesc: 'This will permanently delete all schedule rows, roster, and settings. This cannot be undone.',
+    resetConfirmText: 'Type RESET to confirm:',
+    resetConfirm: 'Reset everything',
+    resetCancel: 'Cancel',
   },
   ua: {
     title: 'Розклад',
@@ -143,7 +149,7 @@ const TRANSLATIONS = {
     hintsDismiss: 'Зрозуміло',
     hintR4: 'ПКМ (довге натискання) на імені для R4 або перейменування',
     hintRename: 'Клікніть на ім\'я в Складі щоб перейменувати всюди',
-    hintNotes: 'Додайте нотатку після імені: Smith (хворий) — нотатки зберігаються, ім\'я розпізнається',
+    hintNotes: 'Додайте нотатку після імені: Smith (День народження) — нотатки зберігаються, ім\'я розпізнається',
     hintDrag: 'Перетягніть підсвічені рядки повторень для переміщення вікна',
     hintDateFill: 'Клікніть на дату для автозаповнення послідовних дат',
     hintKeyboard: 'Tab / Enter / Стрілки для навігації; Ctrl+Z / Y для скасування',
@@ -151,6 +157,12 @@ const TRANSLATIONS = {
     rename: 'Перейменувати',
     renameAll: 'Перейменувати "{name}" всюди',
     renamePrompt: 'Нове ім\'я для "{name}":',
+    resetBtn: 'Скинути',
+    resetTitle: 'Скинути всі дані',
+    resetDesc: 'Це видалить всі рядки розкладу, склад та налаштування назавжди. Цю дію не можна скасувати.',
+    resetConfirmText: 'Введіть RESET для підтвердження:',
+    resetConfirm: 'Скинути все',
+    resetCancel: 'Скасувати',
   },
   fr: {
     title: 'Programme',
@@ -219,7 +231,7 @@ const TRANSLATIONS = {
     hintsDismiss: 'Compris',
     hintR4: 'Clic droit (appui long) sur un nom pour R4 ou renommer',
     hintRename: "Cliquez sur un nom dans l'Effectif pour le renommer partout",
-    hintNotes: 'Ajoutez une note après le nom : Smith (malade) — les notes sont conservées',
+    hintNotes: 'Ajoutez une note après le nom : Smith (Anniversaire) — les notes sont conservées',
     hintDrag: "Faites glisser les lignes surlignées pour déplacer la fenêtre",
     hintDateFill: 'Cliquez sur une date pour remplir automatiquement',
     hintKeyboard: 'Tab / Entrée / Flèches pour naviguer ; Ctrl+Z / Y pour annuler',
@@ -227,6 +239,12 @@ const TRANSLATIONS = {
     rename: 'Renommer',
     renameAll: 'Renommer "{name}" partout',
     renamePrompt: 'Nouveau nom pour "{name}" :',
+    resetBtn: 'Réinitialiser',
+    resetTitle: 'Réinitialiser toutes les données',
+    resetDesc: 'Cela supprimera définitivement toutes les lignes, l\'effectif et les paramètres. Cette action est irréversible.',
+    resetConfirmText: 'Tapez RESET pour confirmer :',
+    resetConfirm: 'Tout réinitialiser',
+    resetCancel: 'Annuler',
   },
 };
 
@@ -260,6 +278,12 @@ function applyLang() {
   document.getElementById('importRosterBtn').textContent = t('importRoster');
   document.getElementById('shareBtn').textContent = t('share');
   document.getElementById('hintsToggle').title = t('hintsTips');
+  document.getElementById('resetBtn').textContent = t('resetBtn');
+  document.getElementById('resetModalTitle').textContent = t('resetTitle');
+  document.getElementById('resetModalDesc').textContent = t('resetDesc');
+  document.getElementById('resetModalConfirmText').innerHTML = t('resetConfirmText').replace('RESET', '<strong>RESET</strong>');
+  document.getElementById('resetModalConfirm').textContent = t('resetConfirm');
+  document.getElementById('resetModalCancel').textContent = t('resetCancel');
   document.querySelectorAll('.lang-btn').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.lang === currentLang);
   });
@@ -928,3 +952,51 @@ document.querySelectorAll('.lang-btn').forEach(btn => {
     applyLang();
   });
 });
+
+// ── Reset all data ──────────────────────────────────
+(function initReset() {
+  const overlay = document.getElementById('resetModalOverlay');
+  const input = document.getElementById('resetConfirmInput');
+  const confirmBtn = document.getElementById('resetModalConfirm');
+
+  function openResetModal() {
+    input.value = '';
+    confirmBtn.disabled = true;
+    overlay.classList.add('visible');
+    setTimeout(() => input.focus(), 100);
+  }
+
+  function closeResetModal() {
+    overlay.classList.remove('visible');
+    input.value = '';
+    confirmBtn.disabled = true;
+  }
+
+  document.getElementById('resetBtn').addEventListener('click', openResetModal);
+  document.getElementById('resetModalCancel').addEventListener('click', closeResetModal);
+
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) closeResetModal();
+  });
+
+  input.addEventListener('input', () => {
+    confirmBtn.disabled = input.value.trim() !== 'RESET';
+  });
+
+  confirmBtn.addEventListener('click', () => {
+    if (input.value.trim() !== 'RESET') return;
+    const keys = [
+      'schedule_data', 'schedule_roster', 'schedule_occ',
+      'schedule_lang', 'schedule_roster_vis', 'schedule_hints_seen'
+    ];
+    keys.forEach(k => localStorage.removeItem(k));
+    location.reload();
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && overlay.classList.contains('visible')) closeResetModal();
+    if (e.key === 'Enter' && overlay.classList.contains('visible') && !confirmBtn.disabled) {
+      confirmBtn.click();
+    }
+  });
+})();
