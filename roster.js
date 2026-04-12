@@ -88,7 +88,7 @@ function renderRoster() {
   body.innerHTML = entries.map(e =>
     `<div class="roster-row" data-key="${e.key}">` +
       (e.r4 ? `<span class="roster-r4-toggle active">R4</span>` : '') +
-      `<span class="roster-name${e.total === 0 ? ' zero' : ''}" data-key="${e.key}">${escapeHtml(e.display)}</span>` +
+      `<span class="roster-name${e.total === 0 ? ' zero' : ''}" data-key="${e.key}" title="${escapeHtml(e.display)}">${escapeHtml(e.display)}</span>` +
       `<span class="roster-counts">` +
         `<span class="roster-total${e.total === 0 ? ' zero' : ''}">${e.total}</span>` +
         (e.cond ? `<span class="occ-stats-badge cond">${cLabel} ${e.cond}</span>` : '') +

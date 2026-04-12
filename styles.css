@@ -611,9 +611,9 @@ body.occ-drag-ready tr.in-window.window-bottom > td {
 .roster-panel {
   display: none;
   position: fixed;
-  left: max(12px, calc((100vw - 720px) / 2 - 260px));
+  left: max(12px, calc((100vw - 720px) / 2 - 400px));
   top: 80px;
-  width: 240px;
+  width: 320px;
   max-height: calc(100dvh - 100px);
   overflow-y: auto;
   background: var(--card-bg);
@@ -699,7 +699,9 @@ body.occ-drag-ready tr.in-window.window-bottom > td {
 .roster-name {
   flex: 1;
   min-width: 0;
-  word-break: break-word;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   margin-right: 6px;
   cursor: pointer;
   border-radius: 4px;
