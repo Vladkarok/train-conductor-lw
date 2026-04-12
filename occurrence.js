@@ -36,7 +36,7 @@ function buildCounts(activeGroups, field) {
   const counts = new Map();
   activeGroups.forEach(g => {
     g.indices.forEach(i => {
-      const val = (rows[i][field] || '').trim().toLowerCase();
+      const val = nameKey(rows[i][field]);
       if (!val) return;
       counts.set(val, (counts.get(val) || 0) + 1);
     });
@@ -48,8 +48,8 @@ function buildGeneralCounts(activeGroups) {
   const counts = new Map();
   activeGroups.forEach(g => {
     g.indices.forEach(i => {
-      const c = (rows[i].conductor || '').trim().toLowerCase();
-      const v = (rows[i].vip || '').trim().toLowerCase();
+      const c = nameKey(rows[i].conductor);
+      const v = nameKey(rows[i].vip);
       if (c) counts.set(c, (counts.get(c) || 0) + 1);
       if (v) counts.set(v, (counts.get(v) || 0) + 1);
     });
@@ -59,7 +59,7 @@ function buildGeneralCounts(activeGroups) {
 
 function occClass(value, counts) {
   if (!counts || !value) return '';
-  const n = counts.get(value.trim().toLowerCase()) || 0;
+  const n = counts.get(nameKey(value)) || 0;
   if (n < 2) return '';
   return 'occ-' + Math.min(n, 5);
 }
@@ -74,8 +74,8 @@ function renderOccStats(generalCounts, cCounts, vCounts) {
   const nameMap = new Map();
   const addName = (val) => {
     if (!val) return;
-    const k = val.trim().toLowerCase();
-    if (k && !nameMap.has(k)) nameMap.set(k, val.trim());
+    const k = nameKey(val);
+    if (k && !nameMap.has(k)) nameMap.set(k, extractName(val));
   };
   rows.forEach(r => { addName(r.conductor); addName(r.vip); });
 

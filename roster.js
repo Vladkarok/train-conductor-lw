@@ -17,13 +17,11 @@ function saveRoster() { localStorage.setItem(ROSTER_KEY, JSON.stringify(roster))
 
 function addToRoster(name) {
   if (!name) return;
-  const key = name.trim().toLowerCase();
+  const baseName = extractName(name);
+  const key = baseName.toLowerCase();
   if (!key) return;
   if (!roster[key]) {
-    roster[key] = { display: name.trim(), r4: false };
-    saveRoster();
-  } else if (roster[key].display !== name.trim()) {
-    roster[key].display = name.trim();
+    roster[key] = { display: baseName, r4: false };
     saveRoster();
   }
 }
@@ -39,8 +37,8 @@ function getRosterStats() {
   const stats = {};
   Object.keys(roster).forEach(k => { stats[k] = { cond: 0, vip: 0 }; });
   rows.forEach(r => {
-    const c = (r.conductor || '').trim().toLowerCase();
-    const v = (r.vip || '').trim().toLowerCase();
+    const c = nameKey(r.conductor);
+    const v = nameKey(r.vip);
     if (c && stats[c] !== undefined) stats[c].cond++;
     if (v && stats[v] !== undefined) stats[v].vip++;
   });
@@ -98,12 +96,12 @@ function renderRoster() {
     const r4Key = field === 'conductor' ? 'r4c' : 'r4v';
     pushUndo();
     rows[index][r4Key] = value;
-    const name = (rows[index][field] || '').trim().toLowerCase();
-    if (name && roster[name]) {
-      roster[name].r4 = rows.some(r => {
-        const c = (r.conductor || '').trim().toLowerCase();
-        const v = (r.vip || '').trim().toLowerCase();
-        return (c === name && r.r4c) || (v === name && r.r4v);
+    const key = nameKey(rows[index][field]);
+    if (key && roster[key]) {
+      roster[key].r4 = rows.some(r => {
+        const c = nameKey(r.conductor);
+        const v = nameKey(r.vip);
+        return (c === key && r.r4c) || (v === key && r.r4v);
       });
       saveRoster();
     }
@@ -113,15 +111,15 @@ function renderRoster() {
   }
 
   function setR4All(name, field, value) {
-    const key = name.trim().toLowerCase();
+    const key = nameKey(name);
     pushUndo();
     rows.forEach(r => {
-      if (field === 'conductor' && (r.conductor || '').trim().toLowerCase() === key) r.r4c = value;
-      if (field === 'vip' && (r.vip || '').trim().toLowerCase() === key) r.r4v = value;
+      if (field === 'conductor' && nameKey(r.conductor) === key) r.r4c = value;
+      if (field === 'vip' && nameKey(r.vip) === key) r.r4v = value;
     });
     rows.forEach(r => {
-      if (field !== 'conductor' && (r.conductor || '').trim().toLowerCase() === key) r.r4c = value;
-      if (field !== 'vip' && (r.vip || '').trim().toLowerCase() === key) r.r4v = value;
+      if (field !== 'conductor' && nameKey(r.conductor) === key) r.r4c = value;
+      if (field !== 'vip' && nameKey(r.vip) === key) r.r4v = value;
     });
     if (roster[key]) { roster[key].r4 = value; saveRoster(); }
     saveData();

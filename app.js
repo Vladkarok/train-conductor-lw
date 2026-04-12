@@ -261,6 +261,14 @@ function applyLang() {
   renderRoster();
 }
 
+// ── Name extraction (strip notes) ────────────────────
+// "Smith (sick)" → "Smith", "Alice [backup]" → "Alice", "Bob {note}" → "Bob"
+function extractName(val) {
+  if (!val) return '';
+  return val.replace(/\s*[\(\[\{\"\'"""''].*/g, '').trim();
+}
+function nameKey(val) { return extractName(val).toLowerCase(); }
+
 // ── Clipboard helper ─────────────────────────────────
 function copyToClipboard(text) {
   if (navigator.clipboard && navigator.clipboard.writeText) {
@@ -298,14 +306,20 @@ function downloadFile(filename, content, mime) {
 // ── Global rename ────────────────────────────────────
 function renamePlayer(oldName, newName) {
   if (!oldName || !newName || oldName === newName) return;
-  const oldKey = oldName.trim().toLowerCase();
-  const newKey = newName.trim().toLowerCase();
+  const oldKey = nameKey(oldName);
+  const newKey = nameKey(newName);
 
   pushUndo();
-  // Update all schedule cells
+  // Update all schedule cells — preserve trailing notes
   rows.forEach(r => {
-    if ((r.conductor || '').trim().toLowerCase() === oldKey) r.conductor = newName.trim();
-    if ((r.vip || '').trim().toLowerCase() === oldKey) r.vip = newName.trim();
+    if (nameKey(r.conductor) === oldKey) {
+      const suffix = r.conductor.slice(extractName(r.conductor).length);
+      r.conductor = newName.trim() + suffix;
+    }
+    if (nameKey(r.vip) === oldKey) {
+      const suffix = r.vip.slice(extractName(r.vip).length);
+      r.vip = newName.trim() + suffix;
+    }
   });
   saveData();
 
@@ -325,15 +339,15 @@ function renamePlayer(oldName, newName) {
 }
 
 function toggleR4Player(name) {
-  const key = name.trim().toLowerCase();
+  const key = nameKey(name);
   if (!roster[key]) return;
   const newVal = !roster[key].r4;
   pushUndo();
   roster[key].r4 = newVal;
   // Propagate to all cells
   rows.forEach(r => {
-    if ((r.conductor || '').trim().toLowerCase() === key) r.r4c = newVal;
-    if ((r.vip || '').trim().toLowerCase() === key) r.r4v = newVal;
+    if (nameKey(r.conductor) === key) r.r4c = newVal;
+    if (nameKey(r.vip) === key) r.r4v = newVal;
   });
   saveRoster();
   saveData();
@@ -733,7 +747,7 @@ function startEdit(cell) {
       rows[index][r4Field] = false; // clear old R4 state
       if (val) {
         addToRoster(val);
-        const rKey = val.trim().toLowerCase();
+        const rKey = nameKey(val);
         if (roster[rKey] && roster[rKey].r4) {
           rows[index][r4Field] = true;
         }
