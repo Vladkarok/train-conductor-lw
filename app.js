@@ -1,7 +1,7 @@
 // ── i18n ──────────────────────────────────────────────
 const TRANSLATIONS = {
   en: {
-    title: 'Schedule',
+    title: 'Alliance Train Schedule',
     date: 'Date',
     conductor: 'Conductor',
     vip: 'VIP',
@@ -83,7 +83,7 @@ const TRANSLATIONS = {
     resetCancel: 'Cancel',
   },
   ua: {
-    title: 'Розклад',
+    title: 'Розклад поїздів альянсу',
     date: 'Дата',
     conductor: 'Провідник',
     vip: 'VIP',
@@ -165,7 +165,7 @@ const TRANSLATIONS = {
     resetCancel: 'Скасувати',
   },
   fr: {
-    title: 'Programme',
+    title: 'Horaire de train d\'alliance',
     date: 'Date',
     conductor: 'Chef de train',
     vip: 'VIP',
