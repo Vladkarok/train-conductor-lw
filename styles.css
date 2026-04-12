@@ -684,13 +684,12 @@ body.occ-drag-ready tr.in-window.window-bottom > td {
   font-weight: 700;
   font-family: inherit;
   padding: 1px 4px;
-  cursor: pointer;
+  cursor: default;
   margin-right: 6px;
   transition: all .15s;
   flex-shrink: 0;
   opacity: .4;
 }
-.roster-r4-toggle:hover { opacity: .8; border-color: var(--accent-border); }
 .roster-r4-toggle.active {
   background: rgba(251,146,60,.22);
   border-color: rgba(251,146,60,.5);
@@ -700,9 +699,7 @@ body.occ-drag-ready tr.in-window.window-bottom > td {
 .roster-name {
   flex: 1;
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  word-break: break-word;
   margin-right: 6px;
   cursor: pointer;
   border-radius: 4px;

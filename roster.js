@@ -304,13 +304,9 @@ document.getElementById('rosterBody').addEventListener('click', (e) => {
     return;
   }
 
-  // R4 toggle
+  // R4 badge — no click action, use right-click/long-press instead
   const r4Btn = e.target.closest('.roster-r4-toggle');
-  if (r4Btn) {
-    const key = r4Btn.dataset.key;
-    if (roster[key]) toggleR4Player(roster[key].display);
-    return;
-  }
+  if (r4Btn) return;
 
   // Click name → rename
   const nameEl = e.target.closest('.roster-name');
@@ -324,3 +320,68 @@ document.getElementById('rosterBody').addEventListener('click', (e) => {
     }
   }
 });
+
+// ── Roster R4 context menu (right-click / long-press) ──
+(function() {
+  const body = document.getElementById('rosterBody');
+  let longPressTimer = null;
+
+  function showRosterR4Menu(x, y, key) {
+    if (!roster[key]) return;
+    const hasR4 = roster[key].r4;
+    const name = roster[key].display;
+
+    // Reuse the existing R4 menu infrastructure
+    const existing = document.querySelector('.r4-menu');
+    if (existing) existing.remove();
+
+    const menu = document.createElement('div');
+    menu.className = 'r4-menu';
+    menu.style.left = x + 'px';
+    menu.style.top = y + 'px';
+
+    const btn = document.createElement('button');
+    btn.textContent = hasR4 ? t('rosterUnmarkR4') : t('rosterMarkR4');
+    btn.addEventListener('click', () => {
+      menu.remove();
+      toggleR4Player(name);
+    });
+    menu.appendChild(btn);
+
+    document.body.appendChild(menu);
+
+    // Clamp to viewport
+    const rect = menu.getBoundingClientRect();
+    if (rect.right > window.innerWidth) menu.style.left = (window.innerWidth - rect.width - 8) + 'px';
+    if (rect.bottom > window.innerHeight) menu.style.top = (window.innerHeight - rect.height - 8) + 'px';
+
+    const close = (e) => {
+      if (!menu.contains(e.target)) { menu.remove(); document.removeEventListener('click', close); }
+    };
+    setTimeout(() => document.addEventListener('click', close), 10);
+  }
+
+  function getRowKey(target) {
+    const row = target.closest('.roster-row');
+    return row ? row.dataset.key : null;
+  }
+
+  body.addEventListener('contextmenu', (e) => {
+    const key = getRowKey(e.target);
+    if (!key) return;
+    e.preventDefault();
+    showRosterR4Menu(e.clientX, e.clientY, key);
+  });
+
+  // Long-press for mobile
+  body.addEventListener('touchstart', (e) => {
+    const key = getRowKey(e.target);
+    if (!key) return;
+    longPressTimer = setTimeout(() => {
+      const touch = e.touches[0];
+      showRosterR4Menu(touch.clientX, touch.clientY, key);
+    }, 500);
+  });
+  body.addEventListener('touchend', () => clearTimeout(longPressTimer));
+  body.addEventListener('touchmove', () => clearTimeout(longPressTimer));
+})();
