@@ -419,10 +419,19 @@ function loadData() {
         if (r.r4c === undefined) r.r4c = false;
         if (r.r4v === undefined) r.r4v = false;
       });
+      // Migrate order: if dates are ascending (oldest first), reverse to newest first
+      ensureNewestFirst(rows);
       return;
     }
   } catch {}
   rows = [newRow()];
+}
+
+function ensureNewestFirst(arr) {
+  const dates = arr.filter(r => r.date).map(r => parseDate(r.date)).filter(Boolean);
+  if (dates.length >= 2 && dates[0] < dates[dates.length - 1]) {
+    arr.reverse();
+  }
 }
 
 // Get all rows in the same group
@@ -549,7 +558,7 @@ function computeDateFill(index, dateStr) {
   if (baseGroupIdx === -1) return null;
   const result = [];
   leaders.forEach((leaderIdx, gi) => {
-    const offset = gi - baseGroupIdx;
+    const offset = baseGroupIdx - gi;
     result.push({ leaderIdx, date: formatDate(addDays(baseDate, offset)) });
   });
   return result;
@@ -913,12 +922,12 @@ tbody.addEventListener('click', (e) => {
 // ── Add row ──────────────────────────────────────────
 function addNewRow() {
   pushUndo();
-  rows.push(newRow());
+  rows.unshift(newRow());
   saveData();
   renderTable();
   requestAnimationFrame(() => {
-    const lastDateCell = document.querySelector(`.cell[data-index="${rows.length - 1}"][data-field="date"]`);
-    if (lastDateCell) startEdit(lastDateCell);
+    const firstDateCell = document.querySelector('.cell[data-index="0"][data-field="date"]');
+    if (firstDateCell) startEdit(firstDateCell);
   });
 }
 

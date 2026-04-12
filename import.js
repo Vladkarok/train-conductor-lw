@@ -185,11 +185,12 @@ document.getElementById('importScheduleBtn').addEventListener('click', () => {
     const jsonData = tryParseShareJson(result.data);
 
     pushUndo();
+    ensureNewestFirst(parsed);
     if (result.mode === 'replace') {
       rows.length = 0;
       parsed.forEach(r => rows.push(r));
     } else {
-      parsed.forEach(r => rows.push(r));
+      rows.unshift(...parsed);
     }
     saveData();
 

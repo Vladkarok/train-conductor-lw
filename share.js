@@ -39,17 +39,17 @@ function loadFromUrl() {
 
     // Load rows
     rows.length = 0;
-    payload.rows.forEach(r => {
-      rows.push({
-        id: r.id || uid(),
-        group: r.group || uid(),
-        date: r.date || '',
-        conductor: r.conductor || '',
-        vip: r.vip || '',
-        r4c: !!r.r4c,
-        r4v: !!r.r4v
-      });
-    });
+    const loaded = payload.rows.map(r => ({
+      id: r.id || uid(),
+      group: r.group || uid(),
+      date: r.date || '',
+      conductor: r.conductor || '',
+      vip: r.vip || '',
+      r4c: !!r.r4c,
+      r4v: !!r.r4v
+    }));
+    ensureNewestFirst(loaded);
+    loaded.forEach(r => rows.push(r));
     saveData();
 
     // Load roster if present
