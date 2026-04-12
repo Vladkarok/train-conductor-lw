@@ -275,7 +275,7 @@ function applyLang() {
   document.getElementById('rosterTitle').textContent = t('roster');
   document.getElementById('rosterInput').placeholder = t('rosterAdd');
   document.getElementById('importScheduleBtn').textContent = t('importSchedule');
-  document.getElementById('importRosterBtn').textContent = t('importRoster');
+  document.getElementById('importRosterBtn').title = t('importRoster');
   document.getElementById('shareBtn').textContent = t('share');
   document.getElementById('hintsToggle').title = t('hintsTips');
   document.getElementById('resetBtn').textContent = t('resetBtn');
@@ -877,7 +877,22 @@ function moveTo(rowIndex, field, direction) {
   if (ri < 0 || ri >= rows.length) return;
 
   requestAnimationFrame(() => {
-    const target = document.querySelector(`.cell[data-index="${ri}"][data-field="${FIELDS[fi]}"]`);
+    let target = document.querySelector(`.cell[data-index="${ri}"][data-field="${FIELDS[fi]}"]`);
+    // If target cell doesn't exist (e.g. date cell on sub-row), skip to next valid cell
+    if (!target) {
+      const maxAttempts = rows.length * FIELDS.length;
+      for (let a = 0; a < maxAttempts && !target; a++) {
+        if (dir === 'left' || dir === 'up') {
+          fi--;
+          if (fi < 0) { fi = FIELDS.length - 1; ri--; }
+        } else {
+          fi++;
+          if (fi >= FIELDS.length) { fi = 0; ri++; }
+        }
+        if (ri < 0 || ri >= rows.length) return;
+        target = document.querySelector(`.cell[data-index="${ri}"][data-field="${FIELDS[fi]}"]`);
+      }
+    }
     if (target) startEdit(target);
   });
 }

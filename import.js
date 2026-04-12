@@ -1,5 +1,36 @@
 // ── Import / Export ─────────────────────────────────
 
+// Split a CSV/TSV line respecting quoted fields with embedded delimiters
+function splitCsvLine(line, delimiter) {
+  const fields = [];
+  let current = '';
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (inQuotes) {
+      if (ch === '"') {
+        if (i + 1 < line.length && line[i + 1] === '"') {
+          current += '"';
+          i++;
+        } else {
+          inQuotes = false;
+        }
+      } else {
+        current += ch;
+      }
+    } else if (ch === '"') {
+      inQuotes = true;
+    } else if (ch === delimiter) {
+      fields.push(current);
+      current = '';
+    } else {
+      current += ch;
+    }
+  }
+  fields.push(current);
+  return fields;
+}
+
 // Strip CSV quotes: "value" → value, "" → "
 function unquote(s) {
   s = s.trim();
@@ -40,7 +71,7 @@ function parseScheduleData(text) {
   const delimiter = hasTab ? '\t' : ',';
 
   let startIdx = 0;
-  const firstCols = lines[0].split(delimiter).map(c => unquote(c).toLowerCase());
+  const firstCols = splitCsvLine(lines[0], delimiter).map(c => unquote(c).toLowerCase());
   const headerWords = ['date', 'conductor', 'vip', 'дата', 'провідник', 'chef'];
   if (firstCols.some(c => headerWords.some(h => c.includes(h)))) {
     startIdx = 1;
@@ -50,7 +81,7 @@ function parseScheduleData(text) {
   let currentGroup = null;
 
   for (let i = startIdx; i < lines.length; i++) {
-    const cols = lines[i].split(delimiter).map(c => unquote(c));
+    const cols = splitCsvLine(lines[i], delimiter).map(c => unquote(c));
     const rawDate = cols[0] || '';
     const conductor = cols[1] || '';
     const vip = cols[2] || '';

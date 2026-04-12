@@ -9,7 +9,10 @@ function buildSharePayload(includeRoster) {
 function encodeShareUrl(payload) {
   const json = JSON.stringify(payload);
   const compressed = LZString.compressToEncodedURIComponent(json);
-  return window.location.origin + window.location.pathname + '#d=' + compressed;
+  const base = window.location.origin !== 'null'
+    ? window.location.origin + window.location.pathname
+    : window.location.href.split('#')[0];
+  return base + '#d=' + compressed;
 }
 
 function decodeShareHash(hash) {
