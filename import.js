@@ -294,24 +294,37 @@ function groupTimestamp(group) {
   return dated[0].getTime();
 }
 
+function findAppendInsertIndex(groups, ts) {
+  if (ts === null) return groups.length;
+
+  let lastDatedIndex = -1;
+  for (let i = 0; i < groups.length; i++) {
+    if (groups[i].ts !== null) {
+      lastDatedIndex = i;
+      if (groups[i].ts < ts) {
+        return i;
+      }
+    }
+  }
+
+  return lastDatedIndex + 1;
+}
+
 function appendScheduleRows(parsed) {
   if (!rows.length) {
     rows.push(...parsed);
     return;
   }
 
-  const combinedGroups = splitGroups(rows).concat(splitGroups(parsed)).map((group, order) => ({
+  const combinedGroups = splitGroups(rows).map(group => ({
     group,
-    order,
     ts: groupTimestamp(group)
   }));
 
-  combinedGroups.sort((a, b) => {
-    if (a.ts === null && b.ts === null) return a.order - b.order;
-    if (a.ts === null) return 1;
-    if (b.ts === null) return -1;
-    if (a.ts !== b.ts) return b.ts - a.ts;
-    return a.order - b.order;
+  splitGroups(parsed).forEach(group => {
+    const entry = { group, ts: groupTimestamp(group) };
+    const insertIndex = findAppendInsertIndex(combinedGroups, entry.ts);
+    combinedGroups.splice(insertIndex, 0, entry);
   });
 
   rows.length = 0;
