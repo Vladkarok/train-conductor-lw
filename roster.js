@@ -77,7 +77,8 @@ function syncRosterMarksForKey(key) {
   return changed;
 }
 
-function syncRosterFromTable() {
+function syncRosterFromTable(options) {
+  const opts = options || {};
   const r4Keys = new Set();
   const leftKeys = new Set();
   rows.forEach(r => {
@@ -106,14 +107,25 @@ function syncRosterFromTable() {
   });
 
   let changed = false;
-  r4Keys.forEach(key => {
-    if (roster[key] && !roster[key].r4) {
+  Object.keys(roster).forEach(key => {
+    const nextR4 = r4Keys.has(key);
+    const nextLeft = leftKeys.has(key);
+    if (opts.resetMissingMarks) {
+      if (roster[key].r4 !== nextR4) {
+        roster[key].r4 = nextR4;
+        changed = true;
+      }
+      if (roster[key].left !== nextLeft) {
+        roster[key].left = nextLeft;
+        changed = true;
+      }
+      return;
+    }
+    if (nextR4 && !roster[key].r4) {
       roster[key].r4 = true;
       changed = true;
     }
-  });
-  leftKeys.forEach(key => {
-    if (roster[key] && !roster[key].left) {
+    if (nextLeft && !roster[key].left) {
       roster[key].left = true;
       changed = true;
     }

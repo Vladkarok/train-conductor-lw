@@ -271,6 +271,53 @@ function flashIconButton(btn, msgKey, duration) {
   setTimeout(() => { btn.innerHTML = orig; btn.style.color = ''; }, duration || 1500);
 }
 
+function splitGroups(arr) {
+  const groups = [];
+  let current = [];
+  let currentGroup = null;
+  arr.forEach(row => {
+    if (row.group !== currentGroup) {
+      if (current.length) groups.push(current);
+      current = [row];
+      currentGroup = row.group;
+    } else {
+      current.push(row);
+    }
+  });
+  if (current.length) groups.push(current);
+  return groups;
+}
+
+function groupTimestamp(group) {
+  const dated = group.map(r => parseDate(r.date)).filter(Boolean);
+  if (!dated.length) return null;
+  return dated[0].getTime();
+}
+
+function appendScheduleRows(parsed) {
+  if (!rows.length) {
+    rows.push(...parsed);
+    return;
+  }
+
+  const combinedGroups = splitGroups(rows).concat(splitGroups(parsed)).map((group, order) => ({
+    group,
+    order,
+    ts: groupTimestamp(group)
+  }));
+
+  combinedGroups.sort((a, b) => {
+    if (a.ts === null && b.ts === null) return a.order - b.order;
+    if (a.ts === null) return 1;
+    if (b.ts === null) return -1;
+    if (a.ts !== b.ts) return b.ts - a.ts;
+    return a.order - b.order;
+  });
+
+  rows.length = 0;
+  combinedGroups.forEach(entry => entry.group.forEach(row => rows.push(row)));
+}
+
 // ── Schedule import ────────────────────────────────
 document.getElementById('importScheduleBtn').addEventListener('click', () => {
   showImportModal('schedule').then(result => {
@@ -289,7 +336,7 @@ document.getElementById('importScheduleBtn').addEventListener('click', () => {
       rows.length = 0;
       parsed.forEach(r => rows.push(r));
     } else {
-      rows.unshift(...parsed);
+      appendScheduleRows(parsed);
     }
     saveData();
 
@@ -300,7 +347,7 @@ document.getElementById('importScheduleBtn').addEventListener('click', () => {
       }
       Object.keys(jsonData.roster).forEach(k => { roster[k] = jsonData.roster[k]; });
     }
-    syncRosterFromTable();
+    syncRosterFromTable({ resetMissingMarks: result.mode === 'replace' && !(jsonData && jsonData.roster) });
     saveRoster();
     renderTable();
     renderRoster();

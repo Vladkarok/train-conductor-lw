@@ -56,13 +56,15 @@ function applySharedPayload(payload) {
   loaded.forEach(r => rows.push(r));
   saveData();
 
+  Object.keys(roster).forEach(k => delete roster[k]);
   if (payload.roster && typeof payload.roster === 'object') {
-    Object.keys(roster).forEach(k => delete roster[k]);
     Object.keys(payload.roster).forEach(k => {
       roster[k] = payload.roster[k];
     });
-    saveRoster();
   }
+  saveRoster();
+  highlightedRosterKey = '';
+  saveHighlightedRosterKey();
 
   syncRosterFromTable();
   renderTable();
