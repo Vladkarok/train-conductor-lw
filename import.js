@@ -108,16 +108,67 @@ function parseScheduleData(text) {
 }
 
 function parseRosterData(text) {
+  const lines = text.split(/\r?\n/).filter(l => l.trim());
+  if (!lines.length) return [];
+
+  const hasTab = lines.some(l => l.includes('\t'));
+  const hasStructuredCsv = !hasTab && lines.length > 1 &&
+    lines.some(l => splitCsvLine(l, ',').length > 1);
+
+  if (hasTab || hasStructuredCsv) {
+    const delimiter = hasTab ? '\t' : ',';
+    let startIdx = 0;
+    const firstCols = splitCsvLine(lines[0], delimiter).map(c => unquote(c).toLowerCase());
+    const firstCol = firstCols[0] || '';
+    const secondCol = firstCols[1] || '';
+    const hasHeader = ['name', 'member', 'nickname', 'nick', 'ім', 'ник', 'player']
+      .some(h => firstCol.includes(h)) || secondCol.includes('r4');
+    if (hasHeader) startIdx = 1;
+
+    const entries = [];
+    const seen = new Map();
+    for (let i = startIdx; i < lines.length; i++) {
+      const cols = splitCsvLine(lines[i], delimiter).map(c => unquote(c));
+      const name = (cols[0] || '').trim();
+      if (!name) continue;
+      const key = nameKey(name);
+      if (!key) continue;
+      const r4Raw = (cols[1] || '').trim().toLowerCase();
+      const hasR4 = ['1', 'true', 'yes', 'y', 'x', 'r4'].includes(r4Raw);
+      if (seen.has(key)) {
+        seen.get(key).r4 = seen.get(key).r4 || hasR4;
+        continue;
+      }
+      const entry = { name, r4: hasR4 };
+      seen.set(key, entry);
+      entries.push(entry);
+    }
+    return entries;
+  }
+
   const names = text.split(/[\r\n,]+/)
     .map(n => n.trim())
     .filter(n => n.length > 0);
   const seen = new Set();
-  return names.filter(n => {
-    const k = n.toLowerCase();
-    if (seen.has(k)) return false;
-    seen.add(k);
-    return true;
-  });
+  return names.reduce((result, name) => {
+    const key = nameKey(name);
+    if (!key || seen.has(key)) return result;
+    seen.add(key);
+    result.push({ name, r4: false });
+    return result;
+  }, []);
+}
+
+function buildRosterText() {
+  const entries = Object.values(roster)
+    .slice()
+    .sort((a, b) => a.display.localeCompare(b.display, undefined, { sensitivity: 'base' }));
+  if (!entries.length) return '';
+  const header = ['Name', 'R4'].join('\t');
+  const body = entries.map(entry =>
+    [`"${entry.display.replace(/"/g, '""')}"`, entry.r4 ? '1' : ''].join('\t')
+  ).join('\n');
+  return header + '\n' + body;
 }
 
 // ── Import modal ───────────────────────────────────
@@ -246,15 +297,21 @@ document.getElementById('importScheduleBtn').addEventListener('click', () => {
 document.getElementById('importRosterBtn').addEventListener('click', () => {
   showImportModal('roster').then(result => {
     if (!result) return;
-    const names = parseRosterData(result.data);
-    if (!names.length) {
+    const entries = parseRosterData(result.data);
+    if (!entries.length) {
       flashButton(document.getElementById('importRosterBtn'), 'importError');
       return;
     }
     if (result.mode === 'replace') {
       Object.keys(roster).forEach(k => delete roster[k]);
     }
-    names.forEach(name => addToRoster(name));
+    entries.forEach(entry => {
+      addToRoster(entry.name);
+      const key = nameKey(entry.name);
+      if (key && roster[key] && entry.r4) {
+        roster[key].r4 = true;
+      }
+    });
     saveRoster();
     renderRoster();
     flashIconButton(document.getElementById('importRosterBtn'), 'importSuccess');
@@ -263,11 +320,9 @@ document.getElementById('importRosterBtn').addEventListener('click', () => {
 
 // ── Roster export (clipboard) ──────────────────────
 document.getElementById('rosterExportBtn').addEventListener('click', () => {
-  const names = Object.values(roster).map(r => r.display).sort((a, b) =>
-    a.localeCompare(b, undefined, { sensitivity: 'base' })
-  );
-  if (!names.length) return;
-  copyToClipboard(names.join('\n')).then(() => {
+  const text = buildRosterText();
+  if (!text.trim()) return;
+  copyToClipboard(text).then(() => {
     const btn = document.getElementById('rosterExportBtn');
     const orig = btn.innerHTML;
     btn.innerHTML = '&#10003;';
@@ -302,11 +357,9 @@ document.getElementById('downloadScheduleBtn').addEventListener('click', () => {
 
 // ── Roster download (TXT) ──────────────────────────
 document.getElementById('downloadRosterBtn').addEventListener('click', () => {
-  const names = Object.values(roster).map(r => r.display).sort((a, b) =>
-    a.localeCompare(b, undefined, { sensitivity: 'base' })
-  );
-  if (!names.length) return;
-  downloadFile('roster.txt', names.join('\n'), 'text/plain;charset=utf-8');
+  const text = buildRosterText();
+  if (!text.trim()) return;
+  downloadFile('roster.txt', text, 'text/plain;charset=utf-8');
   const btn = document.getElementById('downloadRosterBtn');
   const orig = btn.innerHTML;
   btn.innerHTML = '&#10003;';
