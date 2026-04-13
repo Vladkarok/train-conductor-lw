@@ -958,22 +958,33 @@ function startEdit(cell) {
       const group = rows[index].group;
       rows.forEach(r => { if (r.group === group) r.date = val; });
     }
-    // Auto-add to roster + mark auto-detect (clear stale flags first)
+    // Auto-add to roster + mark auto-detect, but preserve cell-specific marks
+    // when the underlying player key did not actually change (e.g. notes edited).
     if (field === 'conductor' || field === 'vip') {
       const r4Field = field === 'conductor' ? 'r4c' : 'r4v';
       const leftField = field === 'conductor' ? 'leftc' : 'leftv';
-      rows[index][r4Field] = false; // clear old R4 state
+      const prevR4 = rows[index][r4Field];
+      const prevLeft = rows[index][leftField];
+      const oldKey = nameKey(oldVal);
+      const nextKey = nameKey(val);
+
+      rows[index][r4Field] = false;
       rows[index][leftField] = false;
       if (val) {
         addToRoster(val);
-        const rKey = nameKey(val);
-        if (roster[rKey] && roster[rKey].r4) {
-          rows[index][r4Field] = true;
-        }
-        if (roster[rKey] && roster[rKey].left) {
-          rows[index][leftField] = true;
+        if (nextKey && nextKey === oldKey) {
+          rows[index][r4Field] = prevR4;
+          rows[index][leftField] = prevLeft;
+        } else if (roster[nextKey]) {
+          if (roster[nextKey].r4) rows[index][r4Field] = true;
+          if (roster[nextKey].left) rows[index][leftField] = true;
         }
       }
+      let rosterChanged = false;
+      [oldKey, nextKey].filter(Boolean).filter((key, idx, arr) => arr.indexOf(key) === idx).forEach(key => {
+        if (roster[key] && syncRosterMarksForKey(key)) rosterChanged = true;
+      });
+      if (rosterChanged) saveRoster();
       renderRoster();
     }
     saveData();
@@ -1032,7 +1043,7 @@ function moveTo(rowIndex, field, direction) {
     if (!target) {
       const maxAttempts = rows.length * FIELDS.length;
       for (let a = 0; a < maxAttempts && !target; a++) {
-        if (dir === 'left' || dir === 'up') {
+        if (direction === 'left' || direction === 'up') {
           fi--;
           if (fi < 0) { fi = FIELDS.length - 1; ri--; }
         } else {
@@ -1222,7 +1233,8 @@ document.getElementById('themeToggle').addEventListener('click', toggleTheme);
     if (input.value.trim() !== 'RESET') return;
     const keys = [
       'schedule_data', 'schedule_roster', 'schedule_occ',
-      'schedule_lang', 'schedule_roster_vis', 'schedule_hints_seen', 'schedule_theme'
+      'schedule_lang', 'schedule_roster_vis', 'schedule_hints_seen',
+      'schedule_theme', 'schedule_roster_highlight'
     ];
     keys.forEach(k => localStorage.removeItem(k));
     location.reload();
