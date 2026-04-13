@@ -1,4 +1,9 @@
-// ── Share via URL ──────────────────────────────────
+// ── Share via short links / JSON fallback ──────────
+const SHORT_SHARE_HASH_PREFIX = '#s=';
+const LEGACY_SHARE_HASH_PREFIX = '#d=';
+const SHARE_API_PATH = '/api/share';
+let cachedShareFingerprint = '';
+let cachedShareUrl = '';
 
 function buildSharePayload(includeRoster) {
   const payload = { rows: rows };
@@ -6,184 +11,292 @@ function buildSharePayload(includeRoster) {
   return payload;
 }
 
-function encodeShareUrl(payload) {
-  const json = JSON.stringify(payload);
-  const compressed = LZString.compressToEncodedURIComponent(json);
-  const base = window.location.origin !== 'null'
+function getSharePageBase() {
+  return window.location.origin !== 'null'
     ? window.location.origin + window.location.pathname
     : window.location.href.split('#')[0];
-  return base + '#d=' + compressed;
 }
 
-function decodeShareHash(hash) {
-  if (!hash || !hash.startsWith('#d=')) return null;
+function buildShortShareUrl(id) {
+  return getSharePageBase() + SHORT_SHARE_HASH_PREFIX + encodeURIComponent(id);
+}
+
+function clearShareHash() {
+  history.replaceState(null, '', window.location.pathname + window.location.search);
+}
+
+function decodeLegacyShareHash(hash) {
+  if (!hash || !hash.startsWith(LEGACY_SHARE_HASH_PREFIX)) return null;
   try {
-    const compressed = hash.slice(3);
+    const compressed = hash.slice(LEGACY_SHARE_HASH_PREFIX.length);
     const json = LZString.decompressFromEncodedURIComponent(compressed);
     if (!json) return null;
     return JSON.parse(json);
-  } catch { return null; }
+  } catch {
+    return null;
+  }
+}
+
+function getShortShareId(hash) {
+  if (!hash || !hash.startsWith(SHORT_SHARE_HASH_PREFIX)) return '';
+  try {
+    return decodeURIComponent(hash.slice(SHORT_SHARE_HASH_PREFIX.length)).trim();
+  } catch {
+    return '';
+  }
+}
+
+function normalizeSharedRows(rawRows) {
+  return rawRows.map(r => ({
+    id: r.id || uid(),
+    group: r.group || uid(),
+    date: r.date || '',
+    conductor: r.conductor || '',
+    vip: r.vip || '',
+    r4c: !!r.r4c,
+    r4v: !!r.r4v,
+    leftc: !!r.leftc,
+    leftv: !!r.leftv
+  }));
+}
+
+function applySharedPayload(payload) {
+  pushUndo();
+
+  rows.length = 0;
+  const loaded = normalizeSharedRows(payload.rows || []);
+  ensureNewestFirst(loaded);
+  loaded.forEach(r => rows.push(r));
+  saveData();
+
+  if (payload.roster && typeof payload.roster === 'object') {
+    Object.keys(roster).forEach(k => delete roster[k]);
+    Object.keys(payload.roster).forEach(k => {
+      roster[k] = payload.roster[k];
+    });
+    saveRoster();
+  }
+
+  syncRosterFromTable();
+  renderTable();
+  renderRoster();
+  flashButton(document.getElementById('shareBtn'), 'shareLoaded');
+}
+
+async function fetchSharedPayload(id) {
+  const res = await fetch(`${SHARE_API_PATH}/${encodeURIComponent(id)}`, {
+    headers: { Accept: 'application/json' }
+  });
+  const data = await res.json().catch(() => null);
+  if (res.status === 404) return { missing: true };
+  if (!res.ok) throw new Error((data && data.error) || t('shareError'));
+  if (!data || !Array.isArray(data.rows)) throw new Error(t('shareError'));
+  return { payload: data };
 }
 
 // ── Load from URL on page open ─────────────────────
-function loadFromUrl() {
-  const payload = decodeShareHash(window.location.hash);
-  if (!payload || !payload.rows) return;
+async function loadFromUrl() {
+  const legacyPayload = decodeLegacyShareHash(window.location.hash);
+  let payload = legacyPayload;
 
-  // Show confirmation modal
-  showShareConfirm().then(accepted => {
-    if (!accepted) {
-      // Clear hash without reload
-      history.replaceState(null, '', window.location.pathname);
+  if (!payload) {
+    const shareId = getShortShareId(window.location.hash);
+    if (!shareId) return;
+    try {
+      const result = await fetchSharedPayload(shareId);
+      if (result.missing) {
+        clearShareHash();
+        alert(t('shareMissing'));
+        return;
+      }
+      payload = result.payload;
+    } catch (err) {
+      clearShareHash();
+      alert((err && err.message) || t('shareError'));
       return;
     }
+  }
 
-    pushUndo();
+  if (!payload || !payload.rows) return;
 
-    // Load rows
-    rows.length = 0;
-    const loaded = payload.rows.map(r => ({
-      id: r.id || uid(),
-      group: r.group || uid(),
-      date: r.date || '',
-      conductor: r.conductor || '',
-      vip: r.vip || '',
-      r4c: !!r.r4c,
-      r4v: !!r.r4v,
-      leftc: !!r.leftc,
-      leftv: !!r.leftv
-    }));
-    ensureNewestFirst(loaded);
-    loaded.forEach(r => rows.push(r));
-    saveData();
+  const accepted = await showShareConfirm();
+  if (!accepted) {
+    clearShareHash();
+    return;
+  }
 
-    // Load roster if present
-    if (payload.roster) {
-      Object.keys(roster).forEach(k => delete roster[k]);
-      Object.keys(payload.roster).forEach(k => {
-        roster[k] = payload.roster[k];
-      });
-      saveRoster();
-    }
-
-    syncRosterFromTable();
-    renderTable();
-    renderRoster();
-
-    // Clear hash without reload
-    history.replaceState(null, '', window.location.pathname);
-
-    // Flash feedback
-    flashButton(document.getElementById('shareBtn'), 'shareLoaded');
-  });
+  applySharedPayload(payload);
+  clearShareHash();
 }
 
-// ── Confirm modal (reuse pattern) ──────────────────
+// ── Confirm modal ──────────────────────────────────
 function showShareConfirm() {
   return new Promise(resolve => {
-    const overlay = document.getElementById('shareConfirmOverlay');
-    if (!overlay) {
-      // Create confirm overlay dynamically
-      const div = document.createElement('div');
-      div.className = 'modal-overlay visible';
-      div.id = 'shareConfirmOverlay';
-      div.innerHTML = `
-        <div class="modal">
-          <h3>${escapeHtml(t('shareTitle'))}</h3>
-          <p>${escapeHtml(t('shareLoadConfirm'))}</p>
-          <div class="modal-actions">
-            <button class="btn-cancel" id="shareConfirmNo">${escapeHtml(t('shareNo'))}</button>
-            <button class="btn" id="shareConfirmYes">${escapeHtml(t('shareYes'))}</button>
-          </div>
-        </div>`;
-      document.body.appendChild(div);
+    const div = document.createElement('div');
+    div.className = 'modal-overlay visible';
+    div.id = 'shareConfirmOverlay';
+    div.innerHTML = `
+      <div class="modal">
+        <h3>${escapeHtml(t('shareTitle'))}</h3>
+        <p>${escapeHtml(t('shareLoadConfirm'))}</p>
+        <div class="modal-actions">
+          <button class="btn-cancel" id="shareConfirmNo">${escapeHtml(t('shareNo'))}</button>
+          <button class="btn" id="shareConfirmYes">${escapeHtml(t('shareYes'))}</button>
+        </div>
+      </div>`;
+    document.body.appendChild(div);
 
-      function cleanup(result) {
-        div.remove();
-        resolve(result);
-      }
-
-      div.querySelector('#shareConfirmYes').addEventListener('click', () => cleanup(true));
-      div.querySelector('#shareConfirmNo').addEventListener('click', () => cleanup(false));
-      div.addEventListener('click', e => { if (e.target === div) cleanup(false); });
-      document.addEventListener('keydown', function esc(e) {
-        if (e.key === 'Escape') { document.removeEventListener('keydown', esc); cleanup(false); }
-      });
+    function cleanup(result) {
+      document.removeEventListener('keydown', onKey);
+      div.remove();
+      resolve(result);
     }
+
+    function onKey(e) {
+      if (e.key === 'Escape') cleanup(false);
+    }
+
+    div.querySelector('#shareConfirmYes').addEventListener('click', () => cleanup(true));
+    div.querySelector('#shareConfirmNo').addEventListener('click', () => cleanup(false));
+    div.addEventListener('click', e => { if (e.target === div) cleanup(false); });
+    document.addEventListener('keydown', onKey);
   });
 }
 
-// ── Share modal ────────────────────────────────────
-const SHARE_WARN_THRESHOLD = 4000;
-
-function updateShareLink() {
+function getShareSnapshot() {
   const includeRoster = document.getElementById('shareIncludeRoster').checked;
   const payload = buildSharePayload(includeRoster);
-  const url = encodeShareUrl(payload);
-  document.getElementById('shareLinkInput').value = url;
-  document.getElementById('shareSize').textContent =
-    t('shareSize').replace('{size}', url.length.toLocaleString());
+  const json = JSON.stringify(payload);
+  return { payload, json, fingerprint: json };
+}
 
+function clearCachedShare() {
+  cachedShareFingerprint = '';
+  cachedShareUrl = '';
+}
+
+function setShareWarn(message) {
   const warn = document.getElementById('shareWarn');
-  if (url.length > SHARE_WARN_THRESHOLD) {
-    warn.textContent = t('shareWarn').replace('{size}', url.length.toLocaleString());
+  if (message) {
+    warn.textContent = message;
     warn.classList.add('visible');
   } else {
+    warn.textContent = '';
     warn.classList.remove('visible');
   }
 }
 
+function updateShareInfo() {
+  const snapshot = getShareSnapshot();
+  document.getElementById('shareLinkInput').placeholder = t('shareLinkPlaceholder');
+  document.getElementById('shareLinkInput').value =
+    cachedShareFingerprint === snapshot.fingerprint ? cachedShareUrl : '';
+  document.getElementById('shareSize').textContent =
+    t('shareSize').replace('{size}', snapshot.json.length.toLocaleString());
+  setShareWarn('');
+}
+
+async function createShortShareLink(snapshot) {
+  if (cachedShareUrl && cachedShareFingerprint === snapshot.fingerprint) {
+    return cachedShareUrl;
+  }
+
+  const res = await fetch(SHARE_API_PATH, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json'
+    },
+    body: snapshot.json
+  });
+  const data = await res.json().catch(() => null);
+  if (!res.ok) {
+    throw new Error((data && data.error) || t('shareWarn'));
+  }
+  if (!data || !data.id) {
+    throw new Error(t('shareError'));
+  }
+
+  cachedShareFingerprint = snapshot.fingerprint;
+  cachedShareUrl = buildShortShareUrl(data.id);
+  return cachedShareUrl;
+}
+
+// ── Share modal ────────────────────────────────────
 function openShareModal() {
   const overlay = document.getElementById('shareModalOverlay');
+  const copyBtn = document.getElementById('shareCopyBtn');
+  const downloadBtn = document.getElementById('shareDownloadBtn');
+  const closeBtn = document.getElementById('shareModalClose');
+  const includeRoster = document.getElementById('shareIncludeRoster');
+
   document.getElementById('shareModalTitle').textContent = t('shareTitle');
   document.getElementById('shareModalDesc').textContent = t('shareDesc');
   document.getElementById('shareIncludeRosterLabel').textContent = t('shareIncludeRoster');
-  document.getElementById('shareCopyBtn').textContent = t('shareCopy');
-  document.getElementById('shareDownloadBtn').textContent = t('shareDownload');
-  document.getElementById('shareModalClose').textContent = t('shareClose');
+  copyBtn.textContent = t('shareCopy');
+  downloadBtn.textContent = t('shareDownload');
+  closeBtn.textContent = t('shareClose');
 
-  updateShareLink();
+  clearCachedShare();
+  updateShareInfo();
   overlay.classList.add('visible');
 
   function cleanup() {
     overlay.classList.remove('visible');
-    document.getElementById('shareCopyBtn').removeEventListener('click', onCopy);
-    document.getElementById('shareDownloadBtn').removeEventListener('click', onDownload);
-    document.getElementById('shareModalClose').removeEventListener('click', onClose);
-    document.getElementById('shareIncludeRoster').removeEventListener('change', onChange);
+    copyBtn.disabled = false;
+    copyBtn.classList.remove('btn-success');
+    copyBtn.textContent = t('shareCopy');
+    copyBtn.removeEventListener('click', onCopy);
+    downloadBtn.removeEventListener('click', onDownload);
+    closeBtn.removeEventListener('click', onClose);
+    includeRoster.removeEventListener('change', onChange);
     overlay.removeEventListener('click', onOverlay);
     document.removeEventListener('keydown', onKey);
   }
 
-  function onCopy() {
+  async function onCopy() {
     const input = document.getElementById('shareLinkInput');
-    copyToClipboard(input.value).then(() => {
-      const btn = document.getElementById('shareCopyBtn');
-      btn.textContent = t('shareCopied');
-      btn.classList.add('btn-success');
+    copyBtn.disabled = true;
+    copyBtn.classList.remove('btn-success');
+    copyBtn.textContent = t('shareCreating');
+    setShareWarn('');
+
+    try {
+      const url = await createShortShareLink(getShareSnapshot());
+      input.value = url;
+      await copyToClipboard(url);
+      copyBtn.textContent = t('shareCopied');
+      copyBtn.classList.add('btn-success');
       setTimeout(() => {
-        btn.textContent = t('shareCopy');
-        btn.classList.remove('btn-success');
+        copyBtn.classList.remove('btn-success');
+        copyBtn.textContent = t('shareCopy');
+        copyBtn.disabled = false;
       }, 1500);
-    });
+    } catch (err) {
+      copyBtn.textContent = t('shareCopy');
+      copyBtn.disabled = false;
+      setShareWarn((err && err.message) || t('shareError'));
+    }
   }
 
   function onDownload() {
-    const includeRoster = document.getElementById('shareIncludeRoster').checked;
-    const payload = buildSharePayload(includeRoster);
+    const payload = buildSharePayload(includeRoster.checked);
     const json = JSON.stringify(payload, null, 2);
     downloadFile('schedule-share.json', json, 'application/json');
   }
 
-  function onChange() { updateShareLink(); }
+  function onChange() {
+    clearCachedShare();
+    updateShareInfo();
+  }
   function onClose() { cleanup(); }
   function onOverlay(e) { if (e.target === overlay) cleanup(); }
   function onKey(e) { if (e.key === 'Escape') cleanup(); }
 
-  document.getElementById('shareCopyBtn').addEventListener('click', onCopy);
-  document.getElementById('shareDownloadBtn').addEventListener('click', onDownload);
-  document.getElementById('shareModalClose').addEventListener('click', onClose);
-  document.getElementById('shareIncludeRoster').addEventListener('change', onChange);
+  copyBtn.addEventListener('click', onCopy);
+  downloadBtn.addEventListener('click', onDownload);
+  closeBtn.addEventListener('click', onClose);
+  includeRoster.addEventListener('change', onChange);
   overlay.addEventListener('click', onOverlay);
   document.addEventListener('keydown', onKey);
 }

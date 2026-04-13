@@ -12,7 +12,7 @@ A lightweight schedule editor for **Train Conductor** game alliances. Track who 
 - **Notes** — annotate names with `(Birthday)`, `[backup]`, etc. without breaking matching
 - **Global rename** — rename a player everywhere at once, notes preserved
 - **Import / Export** — paste CSV/TSV, upload files, or copy to clipboard
-- **Share** — generate a compressed URL or download a `.json` file to share schedules across devices
+- **Share** — create short share links on Cloudflare Pages or download a `.json` file to move schedules across devices
 - **Undo / Redo** — full history with Ctrl+Z / Ctrl+Y
 - **Keyboard navigation** — Tab, Enter, arrow keys for fast editing
 - **i18n** — English, Ukrainian, French
@@ -33,12 +33,14 @@ npx serve .
 ```
 
 Deploy to **Cloudflare Pages**, **GitHub Pages**, **Netlify**, or any static hosting.
+Short-link sharing requires **Cloudflare Pages Functions + a KV binding named `SHARES`**. On plain static hosting, `.json` download/import still works.
 
 ## Tech Stack
 
 - Pure HTML / CSS / JavaScript — no frameworks, no dependencies
 - All data stored in `localStorage`
-- [lz-string](https://github.com/pieroxy/lz-string) for URL compression (vendored, MIT)
+- Cloudflare Pages Functions + Workers KV for short share links
+- [lz-string](https://github.com/pieroxy/lz-string) remains vendored for backward compatibility with old embedded share URLs
 
 ## Project Structure
 
@@ -49,7 +51,8 @@ occurrence.js      — occurrence counting and stats panel
 roster.js          — roster management, R4 system, context menus
 import.js          — CSV/TSV/JSON import, file download, clipboard export
 hints.js           — tips panel for feature discoverability
-share.js           — URL sharing with LZ-string compression
+share.js           — short-link sharing UI, JSON download, legacy URL import
+functions/api/     — Cloudflare Pages Functions for short-link storage/fetch
 styles.css         — all styles, dark theme, responsive
 vendor/            — third-party libraries (lz-string)
 ```
