@@ -49,7 +49,9 @@ function loadFromUrl() {
       conductor: r.conductor || '',
       vip: r.vip || '',
       r4c: !!r.r4c,
-      r4v: !!r.r4v
+      r4v: !!r.r4v,
+      leftc: !!r.leftc,
+      leftv: !!r.leftv
     }));
     ensureNewestFirst(loaded);
     loaded.forEach(r => rows.push(r));

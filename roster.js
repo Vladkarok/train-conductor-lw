@@ -4,11 +4,19 @@ const ROSTER_VIS_KEY = 'schedule_roster_vis';
 let roster = {};
 let rosterVisible = false;
 
+function normalizeRosterEntry(entry) {
+  if (!entry) return entry;
+  if (entry.r4 === undefined) entry.r4 = false;
+  if (entry.left === undefined) entry.left = false;
+  return entry;
+}
+
 function loadRoster() {
   try {
     const raw = localStorage.getItem(ROSTER_KEY);
     if (raw) roster = JSON.parse(raw);
   } catch {}
+  Object.keys(roster).forEach(k => normalizeRosterEntry(roster[k]));
   // Migrate legacy keys that contain notes (e.g. "alice (backup)" → "alice")
   let migrated = false;
   Object.keys(roster).forEach(k => {
@@ -16,8 +24,9 @@ function loadRoster() {
     if (nk && nk !== k) {
       if (roster[nk]) {
         roster[nk].r4 = roster[nk].r4 || roster[k].r4;
+        roster[nk].left = roster[nk].left || roster[k].left;
       } else {
-        roster[nk] = { display: extractName(roster[k].display), r4: roster[k].r4 };
+        roster[nk] = { display: extractName(roster[k].display), r4: roster[k].r4, left: roster[k].left };
       }
       delete roster[k];
       migrated = true;
@@ -36,19 +45,42 @@ function addToRoster(name) {
   const key = baseName.toLowerCase();
   if (!key) return;
   if (!roster[key]) {
-    roster[key] = { display: baseName, r4: false };
+    roster[key] = { display: baseName, r4: false, left: false };
     saveRoster();
   }
 }
 
+function syncRosterMarksForKey(key) {
+  if (!key || !roster[key]) return false;
+  const nextR4 = rows.some(r => {
+    const c = nameKey(r.conductor);
+    const v = nameKey(r.vip);
+    return (c === key && r.r4c) || (v === key && r.r4v);
+  });
+  const nextLeft = rows.some(r => {
+    const c = nameKey(r.conductor);
+    const v = nameKey(r.vip);
+    return (c === key && r.leftc) || (v === key && r.leftv);
+  });
+  const changed = roster[key].r4 !== nextR4 || roster[key].left !== nextLeft;
+  roster[key].r4 = nextR4;
+  roster[key].left = nextLeft;
+  return changed;
+}
+
 function syncRosterFromTable() {
   const r4Keys = new Set();
+  const leftKeys = new Set();
   rows.forEach(r => {
     if (r.conductor) {
       addToRoster(r.conductor);
       if (r.r4c) {
         const key = nameKey(r.conductor);
         if (key) r4Keys.add(key);
+      }
+      if (r.leftc) {
+        const key = nameKey(r.conductor);
+        if (key) leftKeys.add(key);
       }
     }
     if (r.vip) {
@@ -57,6 +89,10 @@ function syncRosterFromTable() {
         const key = nameKey(r.vip);
         if (key) r4Keys.add(key);
       }
+      if (r.leftv) {
+        const key = nameKey(r.vip);
+        if (key) leftKeys.add(key);
+      }
     }
   });
 
@@ -64,6 +100,12 @@ function syncRosterFromTable() {
   r4Keys.forEach(key => {
     if (roster[key] && !roster[key].r4) {
       roster[key].r4 = true;
+      changed = true;
+    }
+  });
+  leftKeys.forEach(key => {
+    if (roster[key] && !roster[key].left) {
+      roster[key].left = true;
       changed = true;
     }
   });
@@ -92,10 +134,19 @@ function renderRoster() {
   const stats = getRosterStats();
   const entries = Object.entries(roster).map(([key, val]) => {
     const s = stats[key] || { cond: 0, vip: 0 };
-    return { key, display: val.display, r4: val.r4, cond: s.cond, vip: s.vip, total: s.cond + s.vip };
+    return {
+      key,
+      display: val.display,
+      r4: !!val.r4,
+      left: !!val.left,
+      cond: s.cond,
+      vip: s.vip,
+      total: s.cond + s.vip
+    };
   });
 
   entries.sort((a, b) => {
+    if (a.left !== b.left) return a.left ? 1 : -1;
     if (a.r4 !== b.r4) return a.r4 ? -1 : 1;
     if (a.total !== b.total) return b.total - a.total;
     return a.display.localeCompare(b.display);
@@ -110,8 +161,11 @@ function renderRoster() {
   const vLabel = t('occVip');
   body.innerHTML = entries.map(e =>
     `<div class="roster-row" data-key="${e.key}">` +
-      (e.r4 ? `<span class="roster-r4-toggle active">R4</span>` : '') +
-      `<span class="roster-name${e.total === 0 ? ' zero' : ''}" data-key="${e.key}" title="${escapeHtml(e.display)}">${escapeHtml(e.display)}</span>` +
+      ((e.r4 || e.left) ? `<span class="roster-marks">` +
+        (e.r4 ? `<span class="roster-mark-badge roster-r4-toggle active">R4</span>` : '') +
+        (e.left ? `<span class="roster-mark-badge roster-left-toggle active">${escapeHtml(t('leftBadge'))}</span>` : '') +
+      `</span>` : '') +
+      `<span class="roster-name${e.total === 0 ? ' zero' : ''}${e.left ? ' left' : ''}" data-key="${e.key}" title="${escapeHtml(e.display)}">${escapeHtml(e.display)}</span>` +
       `<span class="roster-counts">` +
         `<span class="roster-total${e.total === 0 ? ' zero' : ''}">${e.total}</span>` +
         (e.cond ? `<span class="occ-stats-badge cond">${cLabel} ${e.cond}</span>` : '') +
@@ -122,7 +176,7 @@ function renderRoster() {
   ).join('');
 }
 
-// ── R4 context menu ──────────────────────────────────
+// ── Player mark context menu ─────────────────────────
 (function() {
   let menu = null;
 
@@ -130,17 +184,16 @@ function renderRoster() {
     if (menu) { menu.remove(); menu = null; }
   }
 
-  function setR4(index, field, value) {
-    const r4Key = field === 'conductor' ? 'r4c' : 'r4v';
+  function getRowMarkKey(field, mark) {
+    return field === 'conductor' ? mark + 'c' : mark + 'v';
+  }
+
+  function setMark(index, field, mark, value) {
+    const markKey = getRowMarkKey(field, mark);
     pushUndo();
-    rows[index][r4Key] = value;
+    rows[index][markKey] = value;
     const key = nameKey(rows[index][field]);
-    if (key && roster[key]) {
-      roster[key].r4 = rows.some(r => {
-        const c = nameKey(r.conductor);
-        const v = nameKey(r.vip);
-        return (c === key && r.r4c) || (v === key && r.r4v);
-      });
+    if (key && roster[key] && syncRosterMarksForKey(key)) {
       saveRoster();
     }
     saveData();
@@ -148,66 +201,62 @@ function renderRoster() {
     renderRoster();
   }
 
-  function setR4All(name, field, value) {
+  function setMarkAll(name, mark, value) {
     const key = nameKey(name);
     pushUndo();
     rows.forEach(r => {
-      if (field === 'conductor' && nameKey(r.conductor) === key) r.r4c = value;
-      if (field === 'vip' && nameKey(r.vip) === key) r.r4v = value;
+      if (nameKey(r.conductor) === key) r[mark + 'c'] = value;
+      if (nameKey(r.vip) === key) r[mark + 'v'] = value;
     });
-    rows.forEach(r => {
-      if (field !== 'conductor' && nameKey(r.conductor) === key) r.r4c = value;
-      if (field !== 'vip' && nameKey(r.vip) === key) r.r4v = value;
-    });
-    if (roster[key]) { roster[key].r4 = value; saveRoster(); }
+    if (roster[key] && syncRosterMarksForKey(key)) saveRoster();
     saveData();
     renderTable();
     renderRoster();
   }
 
-  function showR4Menu(x, y, index, field) {
+  function appendMarkActions(mark, keys, index, field, name) {
+    const markKey = getRowMarkKey(field, mark);
+    const hasMark = rows[index][markKey];
+
+    const btnThis = document.createElement('button');
+    btnThis.textContent = t(hasMark ? keys.removeCell : keys.addCell);
+    btnThis.addEventListener('click', () => {
+      closeMenu();
+      setMark(index, field, mark, !hasMark);
+    });
+    menu.appendChild(btnThis);
+
+    const divider = document.createElement('div');
+    divider.className = 'r4-menu-divider';
+    menu.appendChild(divider);
+
+    const btnAll = document.createElement('button');
+    btnAll.textContent = t(hasMark ? keys.removeAll : keys.addAll).replace('{name}', name.trim());
+    btnAll.addEventListener('click', () => {
+      closeMenu();
+      setMarkAll(name, mark, !hasMark);
+    });
+    menu.appendChild(btnAll);
+  }
+
+  function showPlayerMenu(x, y, index, field) {
     closeMenu();
     const row = rows[index];
     const name = field === 'conductor' ? row.conductor : row.vip;
     if (!name || !name.trim()) return;
-
-    const r4Key = field === 'conductor' ? 'r4c' : 'r4v';
-    const hasR4 = row[r4Key];
 
     menu = document.createElement('div');
     menu.className = 'r4-menu';
     menu.style.left = x + 'px';
     menu.style.top = y + 'px';
 
-    if (hasR4) {
-      const btnThis = document.createElement('button');
-      btnThis.textContent = t('r4Remove');
-      btnThis.addEventListener('click', () => { closeMenu(); setR4(index, field, false); });
-      menu.appendChild(btnThis);
+    appendMarkActions('r4', { addCell: 'r4ThisCell', addAll: 'r4AllCells', removeCell: 'r4Remove', removeAll: 'r4RemoveAll' }, index, field, name);
 
-      const divider = document.createElement('div');
-      divider.className = 'r4-menu-divider';
-      menu.appendChild(divider);
+    const leftDivider = document.createElement('div');
+    leftDivider.className = 'r4-menu-divider';
+    menu.appendChild(leftDivider);
 
-      const btnAll = document.createElement('button');
-      btnAll.textContent = t('r4RemoveAll').replace('{name}', name.trim());
-      btnAll.addEventListener('click', () => { closeMenu(); setR4All(name, field, false); });
-      menu.appendChild(btnAll);
-    } else {
-      const btnThis = document.createElement('button');
-      btnThis.textContent = t('r4ThisCell');
-      btnThis.addEventListener('click', () => { closeMenu(); setR4(index, field, true); });
-      menu.appendChild(btnThis);
-
-      const divider = document.createElement('div');
-      divider.className = 'r4-menu-divider';
-      menu.appendChild(divider);
-
-      const btnAll = document.createElement('button');
-      btnAll.textContent = t('r4AllCells').replace('{name}', name.trim());
-      btnAll.addEventListener('click', () => { closeMenu(); setR4All(name, field, true); });
-      menu.appendChild(btnAll);
-    }
+    appendMarkActions('left', { addCell: 'leftThisCell', addAll: 'leftAllCells', removeCell: 'leftRemove', removeAll: 'leftRemoveAll' }, index, field, name);
 
     // Rename option
     const divRename = document.createElement('div');
@@ -241,7 +290,7 @@ function renderRoster() {
     const name = rows[index][field];
     if (!name || !name.trim()) return;
     e.preventDefault();
-    showR4Menu(e.clientX, e.clientY, index, field);
+    showPlayerMenu(e.clientX, e.clientY, index, field);
   });
 
   // Mobile: long-press (500ms)
@@ -264,7 +313,7 @@ function renderRoster() {
     r4Timer = setTimeout(() => {
       r4Timer = null;
       if (navigator.vibrate) navigator.vibrate(30);
-      showR4Menu(r4StartX, r4StartY, index, field);
+      showPlayerMenu(r4StartX, r4StartY, index, field);
     }, R4_HOLD_MS);
   }, { passive: true });
 
@@ -327,9 +376,8 @@ document.getElementById('rosterBody').addEventListener('click', (e) => {
     return;
   }
 
-  // R4 badge — no click action, use right-click/long-press instead
-  const r4Btn = e.target.closest('.roster-r4-toggle');
-  if (r4Btn) return;
+  // Mark badges — no click action, use right-click/long-press instead
+  if (e.target.closest('.roster-mark-badge')) return;
 
   // Click name → rename
   const nameEl = e.target.closest('.roster-name');
@@ -344,14 +392,15 @@ document.getElementById('rosterBody').addEventListener('click', (e) => {
   }
 });
 
-// ── Roster R4 context menu (right-click / long-press) ──
+// ── Roster mark context menu (right-click / long-press) ──
 (function() {
   const body = document.getElementById('rosterBody');
   let longPressTimer = null;
 
-  function showRosterR4Menu(x, y, key) {
+  function showRosterMarkMenu(x, y, key) {
     if (!roster[key]) return;
     const hasR4 = roster[key].r4;
+    const hasLeft = roster[key].left;
     const name = roster[key].display;
 
     // Reuse the existing R4 menu infrastructure
@@ -370,6 +419,18 @@ document.getElementById('rosterBody').addEventListener('click', (e) => {
       toggleR4Player(name);
     });
     menu.appendChild(btn);
+
+    const divider = document.createElement('div');
+    divider.className = 'r4-menu-divider';
+    menu.appendChild(divider);
+
+    const leftBtn = document.createElement('button');
+    leftBtn.textContent = hasLeft ? t('rosterUnmarkLeft') : t('rosterMarkLeft');
+    leftBtn.addEventListener('click', () => {
+      menu.remove();
+      toggleLeftPlayer(name);
+    });
+    menu.appendChild(leftBtn);
 
     document.body.appendChild(menu);
 
@@ -393,7 +454,7 @@ document.getElementById('rosterBody').addEventListener('click', (e) => {
     const key = getRowKey(e.target);
     if (!key) return;
     e.preventDefault();
-    showRosterR4Menu(e.clientX, e.clientY, key);
+    showRosterMarkMenu(e.clientX, e.clientY, key);
   });
 
   // Long-press for mobile
@@ -402,7 +463,7 @@ document.getElementById('rosterBody').addEventListener('click', (e) => {
     if (!key) return;
     longPressTimer = setTimeout(() => {
       const touch = e.touches[0];
-      showRosterR4Menu(touch.clientX, touch.clientY, key);
+      showRosterMarkMenu(touch.clientX, touch.clientY, key);
     }, 500);
   });
   body.addEventListener('touchend', () => clearTimeout(longPressTimer));

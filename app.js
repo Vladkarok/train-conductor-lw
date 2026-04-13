@@ -17,6 +17,8 @@ const TRANSLATIONS = {
     undoTooltip: 'Undo (Ctrl+Z)',
     redoTooltip: 'Redo (Ctrl+Y)',
     addSubRow: 'Add sub-row',
+    addNewestRow: 'Add newest row',
+    addPastRow: 'Add past row',
     occToggle: 'Occurrences',
     occStats: 'Statistics',
     occNoData: 'No repeated names',
@@ -32,6 +34,13 @@ const TRANSLATIONS = {
     r4RemoveAll: 'Unmark R4 — all "{name}"',
     rosterMarkR4: 'Mark R4',
     rosterUnmarkR4: 'Unmark R4',
+    leftBadge: 'LEFT',
+    leftThisCell: 'Mark Left — this cell',
+    leftAllCells: 'Mark Left — all "{name}"',
+    leftRemove: 'Unmark Left — this cell',
+    leftRemoveAll: 'Unmark Left — all "{name}"',
+    rosterMarkLeft: 'Mark Left',
+    rosterUnmarkLeft: 'Unmark Left',
     importSchedule: 'Import Schedule',
     importRoster: 'Import Roster',
     importScheduleTitle: 'Import Schedule',
@@ -67,7 +76,7 @@ const TRANSLATIONS = {
     downloadRoster: 'Download roster',
     hintsTips: 'Tips',
     hintsDismiss: 'Got it',
-    hintR4: 'Right-click (long-press on mobile) a name for R4 marking or rename',
+    hintR4: 'Right-click (long-press on mobile) a name for marks or rename',
     hintRename: 'Click a name in Roster to rename it everywhere',
     hintNotes: 'Add notes after a name: Smith (Birthday) — notes are preserved, name still matches',
     hintDrag: 'Drag the highlighted occurrence rows to slide the window',
@@ -101,6 +110,8 @@ const TRANSLATIONS = {
     undoTooltip: 'Скасувати (Ctrl+Z)',
     redoTooltip: 'Повторити (Ctrl+Y)',
     addSubRow: 'Додати під-рядок',
+    addNewestRow: 'Додати новий верхній рядок',
+    addPastRow: 'Додати старий нижній рядок',
     occToggle: 'Повторення',
     occStats: 'Статистика',
     occNoData: 'Немає повторів',
@@ -116,6 +127,13 @@ const TRANSLATIONS = {
     r4RemoveAll: 'Зняти R4 — усі "{name}"',
     rosterMarkR4: 'Позначити R4',
     rosterUnmarkR4: 'Зняти R4',
+    leftBadge: 'LEFT',
+    leftThisCell: 'Позначити Вийшов — ця клітинка',
+    leftAllCells: 'Позначити Вийшов — усі "{name}"',
+    leftRemove: 'Зняти Вийшов — ця клітинка',
+    leftRemoveAll: 'Зняти Вийшов — усі "{name}"',
+    rosterMarkLeft: 'Позначити Вийшов',
+    rosterUnmarkLeft: 'Зняти Вийшов',
     importSchedule: 'Імпорт розкладу',
     importRoster: 'Імпорт складу',
     importScheduleTitle: 'Імпорт розкладу',
@@ -151,7 +169,7 @@ const TRANSLATIONS = {
     downloadRoster: 'Завантажити склад',
     hintsTips: 'Підказки',
     hintsDismiss: 'Зрозуміло',
-    hintR4: 'ПКМ (довге натискання) на імені для R4 або перейменування',
+    hintR4: 'ПКМ (довге натискання) на імені для позначок або перейменування',
     hintRename: 'Клікніть на ім\'я в Складі щоб перейменувати всюди',
     hintNotes: 'Додайте нотатку після імені: Smith (День народження) — нотатки зберігаються, ім\'я розпізнається',
     hintDrag: 'Перетягніть підсвічені рядки повторень для переміщення вікна',
@@ -185,6 +203,8 @@ const TRANSLATIONS = {
     undoTooltip: 'Annuler (Ctrl+Z)',
     redoTooltip: 'Rétablir (Ctrl+Y)',
     addSubRow: 'Ajouter sous-ligne',
+    addNewestRow: 'Ajouter la ligne la plus récente',
+    addPastRow: 'Ajouter une ligne plus ancienne',
     occToggle: 'Occurrences',
     occStats: 'Statistiques',
     occNoData: 'Aucun nom répété',
@@ -200,6 +220,13 @@ const TRANSLATIONS = {
     r4RemoveAll: 'Retirer R4 — tous "{name}"',
     rosterMarkR4: 'Marquer R4',
     rosterUnmarkR4: 'Retirer R4',
+    leftBadge: 'LEFT',
+    leftThisCell: 'Marquer parti — cette cellule',
+    leftAllCells: 'Marquer parti — tous "{name}"',
+    leftRemove: 'Retirer parti — cette cellule',
+    leftRemoveAll: 'Retirer parti — tous "{name}"',
+    rosterMarkLeft: 'Marquer parti',
+    rosterUnmarkLeft: 'Retirer parti',
     importSchedule: 'Importer programme',
     importRoster: 'Importer effectif',
     importScheduleTitle: 'Importer le programme',
@@ -235,7 +262,7 @@ const TRANSLATIONS = {
     downloadRoster: "Télécharger l'effectif",
     hintsTips: 'Astuces',
     hintsDismiss: 'Compris',
-    hintR4: 'Clic droit (appui long) sur un nom pour R4 ou renommer',
+    hintR4: 'Clic droit (appui long) sur un nom pour les marques ou renommer',
     hintRename: "Cliquez sur un nom dans l'Effectif pour le renommer partout",
     hintNotes: 'Ajoutez une note après le nom : Smith (Anniversaire) — les notes sont conservées',
     hintDrag: "Faites glisser les lignes surlignées pour déplacer la fenêtre",
@@ -283,6 +310,8 @@ function applyLang() {
   document.getElementById('importScheduleBtn').textContent = t('importSchedule');
   document.getElementById('importRosterBtn').title = t('importRoster');
   document.getElementById('shareBtn').textContent = t('share');
+  document.getElementById('addRowInline').title = t('addNewestRow');
+  document.getElementById('addPastRowBtn').title = t('addPastRow');
   document.getElementById('hintsToggle').title = t('hintsTips');
   document.getElementById('resetBtn').textContent = t('resetBtn');
   document.getElementById('resetModalTitle').textContent = t('resetTitle');
@@ -370,8 +399,9 @@ function renamePlayer(oldName, newName) {
       if (roster[newKey]) {
         // Merge: keep R4 if either had it
         roster[newKey].r4 = roster[newKey].r4 || oldEntry.r4;
+        roster[newKey].left = roster[newKey].left || oldEntry.left;
       } else {
-        roster[newKey] = { display: newName.trim(), r4: oldEntry.r4 };
+        roster[newKey] = { display: newName.trim(), r4: oldEntry.r4, left: oldEntry.left };
       }
       delete roster[oldKey];
     } else {
@@ -401,13 +431,39 @@ function toggleR4Player(name) {
   renderRoster();
 }
 
+function toggleLeftPlayer(name) {
+  const key = nameKey(name);
+  if (!roster[key]) return;
+  const newVal = !roster[key].left;
+  pushUndo();
+  roster[key].left = newVal;
+  rows.forEach(r => {
+    if (nameKey(r.conductor) === key) r.leftc = newVal;
+    if (nameKey(r.vip) === key) r.leftv = newVal;
+  });
+  saveRoster();
+  saveData();
+  renderTable();
+  renderRoster();
+}
+
 // ── Data ──────────────────────────────────────────────
 let rows = [];
 
 function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
 
 function newRow(group) {
-  return { id: uid(), group: group || uid(), date: '', conductor: '', vip: '', r4c: false, r4v: false };
+  return {
+    id: uid(),
+    group: group || uid(),
+    date: '',
+    conductor: '',
+    vip: '',
+    r4c: false,
+    r4v: false,
+    leftc: false,
+    leftv: false
+  };
 }
 
 function cloneRows(r) { return JSON.parse(JSON.stringify(r)); }
@@ -424,6 +480,8 @@ function loadData() {
         if (!r.group) r.group = r.id;
         if (r.r4c === undefined) r.r4c = false;
         if (r.r4v === undefined) r.r4v = false;
+        if (r.leftc === undefined) r.leftc = false;
+        if (r.leftv === undefined) r.leftv = false;
       });
       // Migrate order: if dates are ascending (oldest first), reverse to newest first
       ensureNewestFirst(rows);
@@ -566,6 +624,17 @@ function addDays(date, n) {
   return r;
 }
 
+function getEdgeGroupDate(edge) {
+  const leaders = getGroupLeaders();
+  if (!leaders.length) return null;
+  const ordered = edge === 'bottom' ? leaders.slice().reverse() : leaders;
+  for (const leaderIdx of ordered) {
+    const parsed = parseDate(rows[leaderIdx].date);
+    if (parsed) return parsed;
+  }
+  return null;
+}
+
 // ── Date auto-fill ───────────────────────────────────
 function getGroupLeaders() {
   const seen = new Set();
@@ -672,15 +741,17 @@ function renderTable() {
 
   function inWin(idx) { return w && w.windowIndices.has(idx); }
 
-  function cellHtml(value, placeholder, isR4, counts) {
-    const r4Tag = isR4 ? '<span class="r4-badge">R4</span>' : '';
+  function cellHtml(value, placeholder, marks, counts) {
+    const markTags =
+      (marks.r4 ? '<span class="r4-badge">R4</span>' : '') +
+      (marks.left ? `<span class="left-badge">${escapeHtml(t('leftBadge'))}</span>` : '');
     if (!value) return `<span class="placeholder">${escapeHtml(placeholder)}</span>`;
     if (counts) {
-      const cls = occClass(value, counts);
+      const cls = [occClass(value, counts), marks.left ? 'left-name' : ''].filter(Boolean).join(' ');
       const safe = escapeHtml(value);
-      return (cls ? `<span class="${cls}">${safe}</span>` : safe) + r4Tag;
+      return (cls ? `<span class="${cls}">${safe}</span>` : safe) + markTags;
     }
-    return escapeHtml(value) + r4Tag;
+    return (marks.left ? `<span class="left-name">${escapeHtml(value)}</span>` : escapeHtml(value)) + markTags;
   }
 
   let html = '';
@@ -704,8 +775,8 @@ function renderTable() {
 
     html += `<tr${rowClasses(i)} data-id="${row.id}">`;
     html += `<td${span > 1 ? ` rowspan="${span}"` : ''}><div class="cell" data-field="date" data-index="${i}">${dateDisplay}</div></td>`;
-    html += `<td><div class="cell${row.r4c ? ' cell-r4' : ''}" data-field="conductor" data-index="${i}">${cellHtml(row.conductor, t('conductor'), row.r4c, inWin(i) ? gCounts : null)}</div></td>`;
-    html += `<td><div class="cell${row.r4v ? ' cell-r4' : ''}" data-field="vip" data-index="${i}">${cellHtml(row.vip, t('vip'), row.r4v, inWin(i) ? gCounts : null)}</div></td>`;
+    html += `<td><div class="cell${row.r4c ? ' cell-r4' : ''}${row.leftc ? ' cell-left' : ''}" data-field="conductor" data-index="${i}">${cellHtml(row.conductor, t('conductor'), { r4: row.r4c, left: row.leftc }, inWin(i) ? gCounts : null)}</div></td>`;
+    html += `<td><div class="cell${row.r4v ? ' cell-r4' : ''}${row.leftv ? ' cell-left' : ''}" data-field="vip" data-index="${i}">${cellHtml(row.vip, t('vip'), { r4: row.r4v, left: row.leftv }, inWin(i) ? gCounts : null)}</div></td>`;
     html += `<td><div class="row-actions">`;
     html += `<button class="btn-subrow" data-index="${i}" title="${t('addSubRow')}"><svg width="12" height="12" viewBox="0 0 16 16"><path d="M8 1a1 1 0 0 1 1 1v5h5a1 1 0 1 1 0 2H9v5a1 1 0 1 1-2 0V9H2a1 1 0 0 1 0-2h5V2a1 1 0 0 1 1-1z"/></svg></button>`;
     html += `<button class="btn-delete" data-index="${i}" title="Delete">&times;</button>`;
@@ -715,8 +786,8 @@ function renderTable() {
       const si = groupRows[k];
       const sr = rows[si];
       html += `<tr${rowClasses(si, 'subrow')} data-id="${sr.id}">`;
-      html += `<td><div class="cell${sr.r4c ? ' cell-r4' : ''}" data-field="conductor" data-index="${si}">${cellHtml(sr.conductor, t('conductor'), sr.r4c, inWin(si) ? gCounts : null)}</div></td>`;
-      html += `<td><div class="cell${sr.r4v ? ' cell-r4' : ''}" data-field="vip" data-index="${si}">${cellHtml(sr.vip, t('vip'), sr.r4v, inWin(si) ? gCounts : null)}</div></td>`;
+      html += `<td><div class="cell${sr.r4c ? ' cell-r4' : ''}${sr.leftc ? ' cell-left' : ''}" data-field="conductor" data-index="${si}">${cellHtml(sr.conductor, t('conductor'), { r4: sr.r4c, left: sr.leftc }, inWin(si) ? gCounts : null)}</div></td>`;
+      html += `<td><div class="cell${sr.r4v ? ' cell-r4' : ''}${sr.leftv ? ' cell-left' : ''}" data-field="vip" data-index="${si}">${cellHtml(sr.vip, t('vip'), { r4: sr.r4v, left: sr.leftv }, inWin(si) ? gCounts : null)}</div></td>`;
       html += `<td><div class="row-actions">`;
       html += `<button class="btn-subrow" data-index="${si}" title="${t('addSubRow')}"><svg width="12" height="12" viewBox="0 0 16 16"><path d="M8 1a1 1 0 0 1 1 1v5h5a1 1 0 1 1 0 2H9v5a1 1 0 1 1-2 0V9H2a1 1 0 0 1 0-2h5V2a1 1 0 0 1 1-1z"/></svg></button>`;
       html += `<button class="btn-delete" data-index="${si}" title="Delete">&times;</button>`;
@@ -825,15 +896,20 @@ function startEdit(cell) {
       const group = rows[index].group;
       rows.forEach(r => { if (r.group === group) r.date = val; });
     }
-    // Auto-add to roster + R4 auto-detect (clear stale flag first)
+    // Auto-add to roster + mark auto-detect (clear stale flags first)
     if (field === 'conductor' || field === 'vip') {
       const r4Field = field === 'conductor' ? 'r4c' : 'r4v';
+      const leftField = field === 'conductor' ? 'leftc' : 'leftv';
       rows[index][r4Field] = false; // clear old R4 state
+      rows[index][leftField] = false;
       if (val) {
         addToRoster(val);
         const rKey = nameKey(val);
         if (roster[rKey] && roster[rKey].r4) {
           rows[index][r4Field] = true;
+        }
+        if (roster[rKey] && roster[rKey].left) {
+          rows[index][leftField] = true;
         }
       }
       renderRoster();
@@ -918,7 +994,17 @@ tbody.addEventListener('click', (e) => {
     const index = parseInt(subBtn.dataset.index);
     const group = rows[index].group;
     pushUndo();
-    const sub = { id: uid(), group: group, date: '', conductor: '', vip: '' };
+    const sub = {
+      id: uid(),
+      group: group,
+      date: '',
+      conductor: '',
+      vip: '',
+      r4c: false,
+      r4v: false,
+      leftc: false,
+      leftv: false
+    };
     rows.splice(index + 1, 0, sub);
     saveData();
     renderTable();
@@ -983,14 +1069,41 @@ function addNewRow() {
 
 document.getElementById('addRowInline').addEventListener('click', addNewRow);
 
+function addPastRow() {
+  pushUndo();
+  const row = newRow();
+  const oldestDate = getEdgeGroupDate('bottom');
+  if (oldestDate) {
+    row.date = formatDate(addDays(oldestDate, -1));
+  }
+  rows.push(row);
+  saveData();
+  renderTable();
+  requestAnimationFrame(() => {
+    const targetField = row.date ? 'conductor' : 'date';
+    const target = document.querySelector(`.cell[data-index="${rows.length - 1}"][data-field="${targetField}"]`);
+    if (target) startEdit(target);
+  });
+}
+
+document.getElementById('addPastRowBtn').addEventListener('click', addPastRow);
+
 // ── Export ────────────────────────────────────────────
 document.getElementById('exportBtn').addEventListener('click', () => {
-  const header = [t('date'), t('conductor'), t('vip'), 'R4C', 'R4V'].join('\t');
+  const header = [t('date'), t('conductor'), t('vip'), 'R4C', 'R4V', 'LEFTC', 'LEFTV'].join('\t');
   const seenGroups = new Set();
   const body = rows.map(r => {
     const showDate = !seenGroups.has(r.group);
     seenGroups.add(r.group);
-    return [showDate ? r.date : '', r.conductor, r.vip, r.r4c ? '1' : '', r.r4v ? '1' : ''].join('\t');
+    return [
+      showDate ? r.date : '',
+      r.conductor,
+      r.vip,
+      r.r4c ? '1' : '',
+      r.r4v ? '1' : '',
+      r.leftc ? '1' : '',
+      r.leftv ? '1' : ''
+    ].join('\t');
   }).join('\n');
   const text = header + '\n' + body;
 

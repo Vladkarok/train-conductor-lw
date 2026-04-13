@@ -60,7 +60,9 @@ function parseScheduleData(text) {
       conductor: r.conductor || '',
       vip: r.vip || '',
       r4c: !!r.r4c,
-      r4v: !!r.r4v
+      r4v: !!r.r4v,
+      leftc: !!r.leftc,
+      leftv: !!r.leftv
     }));
   }
 
@@ -87,6 +89,8 @@ function parseScheduleData(text) {
     const vip = cols[2] || '';
     const r4c = !!(cols[3] && cols[3].trim());
     const r4v = !!(cols[4] && cols[4].trim());
+    const leftc = !!(cols[5] && cols[5].trim());
+    const leftv = !!(cols[6] && cols[6].trim());
 
     const date = rawDate ? normalizeDate(rawDate) : '';
 
@@ -101,7 +105,9 @@ function parseScheduleData(text) {
       conductor: conductor,
       vip: vip,
       r4c: r4c,
-      r4v: r4v
+      r4v: r4v,
+      leftc: leftc,
+      leftv: leftv
     });
   }
   return result.length ? result : null;
@@ -121,8 +127,13 @@ function parseRosterData(text) {
     const firstCols = splitCsvLine(lines[0], delimiter).map(c => unquote(c).toLowerCase());
     const firstCol = firstCols[0] || '';
     const secondCol = firstCols[1] || '';
+    const thirdCol = firstCols[2] || '';
     const hasHeader = ['name', 'member', 'nickname', 'nick', 'ім', 'ник', 'player']
-      .some(h => firstCol.includes(h)) || secondCol.includes('r4');
+      .some(h => firstCol.includes(h)) ||
+      secondCol.includes('r4') ||
+      secondCol.includes('left') ||
+      thirdCol.includes('r4') ||
+      thirdCol.includes('left');
     if (hasHeader) startIdx = 1;
 
     const entries = [];
@@ -135,11 +146,14 @@ function parseRosterData(text) {
       if (!key) continue;
       const r4Raw = (cols[1] || '').trim().toLowerCase();
       const hasR4 = ['1', 'true', 'yes', 'y', 'x', 'r4'].includes(r4Raw);
+      const leftRaw = (cols[2] || '').trim().toLowerCase();
+      const hasLeft = ['1', 'true', 'yes', 'y', 'x', 'left'].includes(leftRaw);
       if (seen.has(key)) {
         seen.get(key).r4 = seen.get(key).r4 || hasR4;
+        seen.get(key).left = seen.get(key).left || hasLeft;
         continue;
       }
-      const entry = { name, r4: hasR4 };
+      const entry = { name, r4: hasR4, left: hasLeft };
       seen.set(key, entry);
       entries.push(entry);
     }
@@ -154,7 +168,7 @@ function parseRosterData(text) {
     const key = nameKey(name);
     if (!key || seen.has(key)) return result;
     seen.add(key);
-    result.push({ name, r4: false });
+    result.push({ name, r4: false, left: false });
     return result;
   }, []);
 }
@@ -164,9 +178,9 @@ function buildRosterText() {
     .slice()
     .sort((a, b) => a.display.localeCompare(b.display, undefined, { sensitivity: 'base' }));
   if (!entries.length) return '';
-  const header = ['Name', 'R4'].join('\t');
+  const header = ['Name', 'R4', 'LEFT'].join('\t');
   const body = entries.map(entry =>
-    [`"${entry.display.replace(/"/g, '""')}"`, entry.r4 ? '1' : ''].join('\t')
+    [`"${entry.display.replace(/"/g, '""')}"`, entry.r4 ? '1' : '', entry.left ? '1' : ''].join('\t')
   ).join('\n');
   return header + '\n' + body;
 }
@@ -308,8 +322,9 @@ document.getElementById('importRosterBtn').addEventListener('click', () => {
     entries.forEach(entry => {
       addToRoster(entry.name);
       const key = nameKey(entry.name);
-      if (key && roster[key] && entry.r4) {
-        roster[key].r4 = true;
+      if (key && roster[key]) {
+        if (entry.r4) roster[key].r4 = true;
+        if (entry.left) roster[key].left = true;
       }
     });
     saveRoster();
@@ -333,13 +348,13 @@ document.getElementById('rosterExportBtn').addEventListener('click', () => {
 
 // ── Schedule download (CSV) ────────────────────────
 function buildScheduleCsv() {
-  const header = [t('date'), t('conductor'), t('vip'), 'R4C', 'R4V'].join(',');
+  const header = [t('date'), t('conductor'), t('vip'), 'R4C', 'R4V', 'LEFTC', 'LEFTV'].join(',');
   const seenGroups = new Set();
   const body = rows.map(r => {
     const showDate = !seenGroups.has(r.group);
     seenGroups.add(r.group);
     // Wrap fields in quotes to handle commas in names
-    return [showDate ? r.date : '', r.conductor, r.vip, r.r4c ? '1' : '', r.r4v ? '1' : '']
+    return [showDate ? r.date : '', r.conductor, r.vip, r.r4c ? '1' : '', r.r4v ? '1' : '', r.leftc ? '1' : '', r.leftv ? '1' : '']
       .map(v => '"' + v.replace(/"/g, '""') + '"').join(',');
   }).join('\n');
   return header + '\n' + body;

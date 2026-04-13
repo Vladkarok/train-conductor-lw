@@ -475,6 +475,10 @@ body.occ-drag-ready tr.in-window.window-bottom > td {
 
 /* R4 mark */
 .cell-r4 { background: rgba(240,171,252,.06); }
+.cell-left { background: rgba(148,163,184,.07); }
+.cell-r4.cell-left {
+  background: linear-gradient(135deg, rgba(240,171,252,.08), rgba(148,163,184,.08));
+}
 .r4-badge {
   font-size: 9px;
   font-weight: 700;
@@ -484,6 +488,20 @@ body.occ-drag-ready tr.in-window.window-bottom > td {
   border-radius: 3px;
   margin-left: 4px;
   vertical-align: middle;
+}
+.left-badge {
+  font-size: 9px;
+  font-weight: 700;
+  color: #cbd5e1;
+  background: rgba(148,163,184,.18);
+  padding: 1px 3px;
+  border-radius: 3px;
+  margin-left: 4px;
+  vertical-align: middle;
+}
+.left-name {
+  color: #94a3b8 !important;
+  opacity: .9;
 }
 
 /* R4 context menu */
@@ -700,7 +718,14 @@ body.occ-drag-ready tr.in-window.window-bottom > td {
   border-bottom: 1px solid var(--border);
 }
 .roster-row:last-child { border-bottom: none; }
-.roster-r4-toggle {
+.roster-marks {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-right: 6px;
+  flex-shrink: 0;
+}
+.roster-mark-badge {
   background: var(--pill-bg);
   border: 1px solid var(--border);
   border-radius: 4px;
@@ -710,7 +735,6 @@ body.occ-drag-ready tr.in-window.window-bottom > td {
   font-family: inherit;
   padding: 1px 4px;
   cursor: default;
-  margin-right: 6px;
   transition: all .15s;
   flex-shrink: 0;
   opacity: .4;
@@ -719,6 +743,12 @@ body.occ-drag-ready tr.in-window.window-bottom > td {
   background: rgba(251,146,60,.22);
   border-color: rgba(251,146,60,.5);
   color: #fb923c;
+  opacity: 1;
+}
+.roster-left-toggle.active {
+  background: rgba(148,163,184,.16);
+  border-color: rgba(148,163,184,.4);
+  color: #cbd5e1;
   opacity: 1;
 }
 .roster-name {
@@ -735,6 +765,7 @@ body.occ-drag-ready tr.in-window.window-bottom > td {
 }
 .roster-name:hover { background: var(--pill-bg); }
 .roster-name.zero { color: var(--danger); opacity: .7; }
+.roster-name.left { color: #94a3b8; }
 .roster-counts {
   display: flex;
   align-items: center;
@@ -834,6 +865,14 @@ body.occ-drag-ready tr.in-window.window-bottom > td {
 .add-row-inline svg {
   fill: currentColor;
   flex-shrink: 0;
+}
+.add-row-top {
+  margin-bottom: 8px;
+  border-top: 1px dashed var(--border);
+  border-radius: 16px;
+}
+.add-row-bottom {
+  margin-top: 8px;
 }
 
 /* ── Import modal ──────────────────────────────── */
