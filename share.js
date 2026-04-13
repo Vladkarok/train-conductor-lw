@@ -85,14 +85,15 @@ async function fetchSharedPayload(id) {
     });
     const data = await res.json().catch(() => null);
 
-    if (res.status === 404) {
+    if (res.status === 202 && data && data.pending) {
       if (attempt < SHARE_FETCH_RETRY_DELAYS_MS.length) {
         await wait(SHARE_FETCH_RETRY_DELAYS_MS[attempt]);
         continue;
       }
-      return { missing: true };
+      throw new Error((data && data.error) || t('shareError'));
     }
 
+    if (res.status === 404) return { missing: true };
     if (!res.ok) throw new Error((data && data.error) || t('shareError'));
     if (!data || !Array.isArray(data.rows)) throw new Error(t('shareError'));
     return { payload: data };

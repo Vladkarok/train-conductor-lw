@@ -3,6 +3,7 @@ const MAX_PAYLOAD_BYTES = 256 * 1024;
 const MAX_ROWS = 2000;
 const MAX_ROSTER_ENTRIES = 2000;
 const MAX_TEXT_LENGTH = 160;
+const SHARE_PENDING_WINDOW_SECONDS = 120;
 
 export { SHARE_TTL_SECONDS };
 
@@ -34,11 +35,29 @@ export function missingBindingResponse() {
 }
 
 export function createShareId() {
-  return crypto.randomUUID().replace(/-/g, '');
+  const timestamp = Math.floor(Date.now() / 1000).toString(16).padStart(8, '0');
+  const randomBytes = crypto.getRandomValues(new Uint8Array(12));
+  const randomHex = Array.from(randomBytes, b => b.toString(16).padStart(2, '0')).join('');
+  return `s${timestamp}${randomHex}`;
 }
 
 export function isValidShareId(value) {
-  return typeof value === 'string' && /^[a-f0-9]{32}$/i.test(value);
+  return typeof value === 'string' && /^(?:[a-f0-9]{32}|s[a-f0-9]{32})$/i.test(value);
+}
+
+export function isPendingShareId(value) {
+  if (typeof value !== 'string' || !/^s[a-f0-9]{32}$/i.test(value)) {
+    return false;
+  }
+
+  const timestampHex = value.slice(1, 9);
+  const createdAtSeconds = parseInt(timestampHex, 16);
+  if (!Number.isFinite(createdAtSeconds)) {
+    return false;
+  }
+
+  const nowSeconds = Math.floor(Date.now() / 1000);
+  return createdAtSeconds <= nowSeconds + 5 && nowSeconds - createdAtSeconds <= SHARE_PENDING_WINDOW_SECONDS;
 }
 
 export function validateShareCreateRequest(request) {

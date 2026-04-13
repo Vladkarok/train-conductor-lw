@@ -1,4 +1,5 @@
 import {
+  isPendingShareId,
   isValidShareId,
   jsonResponse,
   methodNotAllowed,
@@ -22,6 +23,9 @@ export async function onRequest(context) {
   const raw = await context.env.SHARES.get(shareId);
   const payload = parseStoredShare(raw);
   if (!payload) {
+    if (isPendingShareId(shareId)) {
+      return jsonResponse({ error: 'Share is still propagating.', pending: true }, 202);
+    }
     return jsonResponse({ error: 'Share not found.' }, 404);
   }
 
