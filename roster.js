@@ -352,10 +352,10 @@ function renderRoster() {
     }
   }, { passive: true });
 
-  document.addEventListener('touchend', () => {
+  document.addEventListener('touchend', (e) => {
     if (r4Timer) { clearTimeout(r4Timer); r4Timer = null; }
     if (r4LongPressTriggered) {
-      suppressTouchClick({ x: r4StartX, y: r4StartY });
+      e.preventDefault();
       r4LongPressTriggered = false;
     }
   });
@@ -426,8 +426,6 @@ document.getElementById('rosterBody').addEventListener('click', (e) => {
   const body = document.getElementById('rosterBody');
   let longPressTimer = null;
   let rosterLongPressTriggered = false;
-  let rosterStartX = 0;
-  let rosterStartY = 0;
 
   function toggleRosterHighlight(key) {
     highlightedRosterKey = highlightedRosterKey === key ? '' : key;
@@ -514,8 +512,6 @@ document.getElementById('rosterBody').addEventListener('click', (e) => {
     const row = e.target.closest('.roster-row');
     const key = row ? row.dataset.key : null;
     if (!key) return;
-    rosterStartX = e.touches[0].clientX;
-    rosterStartY = e.touches[0].clientY;
     rosterLongPressTriggered = false;
     longPressTimer = setTimeout(() => {
       rosterLongPressTriggered = true;
@@ -523,10 +519,10 @@ document.getElementById('rosterBody').addEventListener('click', (e) => {
       showRosterMarkMenu(touch.clientX, touch.clientY, key);
     }, 500);
   });
-  body.addEventListener('touchend', () => {
+  body.addEventListener('touchend', (e) => {
     clearTimeout(longPressTimer);
     if (rosterLongPressTriggered) {
-      suppressTouchClick({ x: rosterStartX, y: rosterStartY });
+      e.preventDefault();
       rosterLongPressTriggered = false;
     }
   });

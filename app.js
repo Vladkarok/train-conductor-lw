@@ -313,30 +313,6 @@ let currentTheme = 'dark';
 
 function t(key) { return TRANSLATIONS[currentLang][key] || TRANSLATIONS.en[key] || key; }
 
-function suppressTouchClick(point, ms) {
-  if (!point || typeof point.x !== 'number' || typeof point.y !== 'number') return;
-  let active = true;
-  const radiusSquared = 36 * 36;
-  const onClick = (e) => {
-    if (!active) return;
-    const dx = (typeof e.clientX === 'number' ? e.clientX : 0) - point.x;
-    const dy = (typeof e.clientY === 'number' ? e.clientY : 0) - point.y;
-    if ((dx * dx + dy * dy) > radiusSquared) return;
-    cleanup();
-    e.preventDefault();
-    e.stopImmediatePropagation();
-  };
-  const cleanup = () => {
-    if (!active) return;
-    active = false;
-    clearTimeout(timer);
-    window.removeEventListener('click', onClick, true);
-  };
-  const timer = setTimeout(cleanup, ms || 350);
-
-  window.addEventListener('click', onClick, true);
-}
-
 function getPreferredTheme() {
   const saved = localStorage.getItem(THEME_KEY);
   if (saved === 'light' || saved === 'dark') return saved;
