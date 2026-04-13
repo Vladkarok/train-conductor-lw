@@ -310,13 +310,11 @@ const DATA_KEY = 'schedule_data';
 const THEME_KEY = 'schedule_theme';
 let currentLang = localStorage.getItem(LANG_KEY) || 'en';
 let currentTheme = 'dark';
-let cancelTouchClickSuppressor = null;
 
 function t(key) { return TRANSLATIONS[currentLang][key] || TRANSLATIONS.en[key] || key; }
 
-function suppressTouchClick(ms) {
-  if (cancelTouchClickSuppressor) cancelTouchClickSuppressor();
-
+function suppressTouchClick(target, ms) {
+  if (!target || !target.addEventListener) return;
   let active = true;
   const onClick = (e) => {
     if (!active) return;
@@ -328,13 +326,11 @@ function suppressTouchClick(ms) {
     if (!active) return;
     active = false;
     clearTimeout(timer);
-    window.removeEventListener('click', onClick, true);
-    if (cancelTouchClickSuppressor === cleanup) cancelTouchClickSuppressor = null;
+    target.removeEventListener('click', onClick, true);
   };
   const timer = setTimeout(cleanup, ms || 700);
 
-  window.addEventListener('click', onClick, true);
-  cancelTouchClickSuppressor = cleanup;
+  target.addEventListener('click', onClick, true);
 }
 
 function getPreferredTheme() {

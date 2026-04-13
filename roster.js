@@ -315,7 +315,7 @@ function renderRoster() {
   });
 
   // Mobile: long-press (500ms)
-  let r4Timer = null, r4StartX = 0, r4StartY = 0;
+  let r4Timer = null, r4StartX = 0, r4StartY = 0, r4PressTarget = null;
   let r4LongPressTriggered = false;
   const R4_HOLD_MS = 500;
   const R4_MOVE_THRESHOLD = 10;
@@ -330,6 +330,7 @@ function renderRoster() {
     if (!name || !name.trim()) return;
 
     r4LongPressTriggered = false;
+    r4PressTarget = cell;
     r4StartX = e.touches[0].clientX;
     r4StartY = e.touches[0].clientY;
 
@@ -355,9 +356,10 @@ function renderRoster() {
   document.addEventListener('touchend', () => {
     if (r4Timer) { clearTimeout(r4Timer); r4Timer = null; }
     if (r4LongPressTriggered) {
-      suppressTouchClick();
+      suppressTouchClick(r4PressTarget);
       r4LongPressTriggered = false;
     }
+    r4PressTarget = null;
   });
 
   document.addEventListener('click', (e) => {
@@ -426,6 +428,7 @@ document.getElementById('rosterBody').addEventListener('click', (e) => {
   const body = document.getElementById('rosterBody');
   let longPressTimer = null;
   let rosterLongPressTriggered = false;
+  let rosterPressTarget = null;
 
   function toggleRosterHighlight(key) {
     highlightedRosterKey = highlightedRosterKey === key ? '' : key;
@@ -509,8 +512,10 @@ document.getElementById('rosterBody').addEventListener('click', (e) => {
 
   // Long-press for mobile
   body.addEventListener('touchstart', (e) => {
-    const key = getRowKey(e.target);
+    const row = e.target.closest('.roster-row');
+    const key = row ? row.dataset.key : null;
     if (!key) return;
+    rosterPressTarget = row;
     rosterLongPressTriggered = false;
     longPressTimer = setTimeout(() => {
       rosterLongPressTriggered = true;
@@ -521,12 +526,14 @@ document.getElementById('rosterBody').addEventListener('click', (e) => {
   body.addEventListener('touchend', () => {
     clearTimeout(longPressTimer);
     if (rosterLongPressTriggered) {
-      suppressTouchClick();
+      suppressTouchClick(rosterPressTarget);
       rosterLongPressTriggered = false;
     }
+    rosterPressTarget = null;
   });
   body.addEventListener('touchmove', () => {
     clearTimeout(longPressTimer);
     rosterLongPressTriggered = false;
+    rosterPressTarget = null;
   });
 })();
