@@ -304,6 +304,7 @@ function renderRoster() {
 
   // Mobile: long-press (500ms)
   let r4Timer = null, r4StartX = 0, r4StartY = 0;
+  let r4LongPressTriggered = false;
   const R4_HOLD_MS = 500;
   const R4_MOVE_THRESHOLD = 10;
 
@@ -316,11 +317,13 @@ function renderRoster() {
     const name = rows[index][field];
     if (!name || !name.trim()) return;
 
+    r4LongPressTriggered = false;
     r4StartX = e.touches[0].clientX;
     r4StartY = e.touches[0].clientY;
 
     r4Timer = setTimeout(() => {
       r4Timer = null;
+      r4LongPressTriggered = true;
       if (navigator.vibrate) navigator.vibrate(30);
       showPlayerMenu(r4StartX, r4StartY, index, field);
     }, R4_HOLD_MS);
@@ -333,11 +336,16 @@ function renderRoster() {
     if (dx > R4_MOVE_THRESHOLD || dy > R4_MOVE_THRESHOLD) {
       clearTimeout(r4Timer);
       r4Timer = null;
+      r4LongPressTriggered = false;
     }
   }, { passive: true });
 
   document.addEventListener('touchend', () => {
     if (r4Timer) { clearTimeout(r4Timer); r4Timer = null; }
+    if (r4LongPressTriggered) {
+      suppressTouchClick();
+      r4LongPressTriggered = false;
+    }
   });
 
   document.addEventListener('click', (e) => {
@@ -374,6 +382,7 @@ document.getElementById('rosterInput').addEventListener('keydown', (e) => {
 });
 
 document.getElementById('rosterBody').addEventListener('click', (e) => {
+  if (isTouchClickSuppressed()) return;
   // Remove
   const removeBtn = e.target.closest('.roster-remove');
   if (removeBtn) {
@@ -405,6 +414,7 @@ document.getElementById('rosterBody').addEventListener('click', (e) => {
 (function() {
   const body = document.getElementById('rosterBody');
   let longPressTimer = null;
+  let rosterLongPressTriggered = false;
 
   function toggleRosterHighlight(key) {
     highlightedRosterKey = highlightedRosterKey === key ? '' : key;
@@ -490,11 +500,22 @@ document.getElementById('rosterBody').addEventListener('click', (e) => {
   body.addEventListener('touchstart', (e) => {
     const key = getRowKey(e.target);
     if (!key) return;
+    rosterLongPressTriggered = false;
     longPressTimer = setTimeout(() => {
+      rosterLongPressTriggered = true;
       const touch = e.touches[0];
       showRosterMarkMenu(touch.clientX, touch.clientY, key);
     }, 500);
   });
-  body.addEventListener('touchend', () => clearTimeout(longPressTimer));
-  body.addEventListener('touchmove', () => clearTimeout(longPressTimer));
+  body.addEventListener('touchend', () => {
+    clearTimeout(longPressTimer);
+    if (rosterLongPressTriggered) {
+      suppressTouchClick();
+      rosterLongPressTriggered = false;
+    }
+  });
+  body.addEventListener('touchmove', () => {
+    clearTimeout(longPressTimer);
+    rosterLongPressTriggered = false;
+  });
 })();

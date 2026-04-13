@@ -313,6 +313,14 @@ let currentTheme = 'dark';
 
 function t(key) { return TRANSLATIONS[currentLang][key] || TRANSLATIONS.en[key] || key; }
 
+function suppressTouchClick(ms) {
+  window.__touchClickSuppressUntil = Date.now() + (ms || 700);
+}
+
+function isTouchClickSuppressed() {
+  return Date.now() < (window.__touchClickSuppressUntil || 0);
+}
+
 function getPreferredTheme() {
   const saved = localStorage.getItem(THEME_KEY);
   if (saved === 'light' || saved === 'dark') return saved;
@@ -1060,6 +1068,7 @@ function moveTo(rowIndex, field, direction) {
 
 // ── Event delegation ─────────────────────────────────
 tbody.addEventListener('click', (e) => {
+  if (isTouchClickSuppressed()) return;
   if (e.target.closest('.fill-hint')) return;
 
   const subBtn = e.target.closest('.btn-subrow');
