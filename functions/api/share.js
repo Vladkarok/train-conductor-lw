@@ -2,6 +2,7 @@ import {
   SHARE_TTL_SECONDS,
   createShareId,
   createShareToken,
+  hasShareSigningKeys,
   jsonResponse,
   methodNotAllowed,
   missingBindingResponse,
@@ -16,7 +17,7 @@ export async function onRequest(context) {
   if (!context.env || !context.env.SHARES) {
     return missingBindingResponse('SHARES');
   }
-  if (!context.env.SHARE_SIGNING_KEY) {
+  if (!hasShareSigningKeys(context.env.SHARE_SIGNING_KEY)) {
     return missingBindingResponse('SHARE_SIGNING_KEY');
   }
 

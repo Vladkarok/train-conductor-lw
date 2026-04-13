@@ -38,6 +38,7 @@ Short-link sharing requires **Cloudflare Pages Functions + a KV binding named `S
 For Cloudflare short-link sharing:
 - bind a Workers KV namespace to the Pages project as `SHARES`
 - add a secret text binding as `SHARE_SIGNING_KEY`
+  You can provide one key or a comma/newline-separated key list. New links are signed with the first key; older keys stay valid for reads during rotation.
 - protect `POST /api/share` with a rate-limit rule in Cloudflare WAF
 - the function only accepts same-origin `application/json` share creation requests
 - fresh signed share links may take a moment to propagate globally, so the API marks only newly-created signed links as pending and the frontend retries those briefly

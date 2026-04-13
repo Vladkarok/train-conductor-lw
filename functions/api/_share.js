@@ -62,8 +62,13 @@ export function isPendingShareId(value) {
 }
 
 export async function createShareToken(id, secret) {
-  const signature = await createShareSignature(id, secret);
+  const [primaryKey] = getShareSigningKeys(secret);
+  const signature = await createShareSignature(id, primaryKey);
   return `${id}.${signature}`;
+}
+
+export function hasShareSigningKeys(secret) {
+  return getShareSigningKeys(secret).length > 0;
 }
 
 export async function resolveShareToken(token, secret) {
@@ -82,8 +87,13 @@ export async function resolveShareToken(token, secret) {
 
   const id = match[1];
   const signature = match[2].toLowerCase();
-  const expected = await createShareSignature(id, secret);
-  return { valid: signature === expected, id, signed: true };
+  for (const key of getShareSigningKeys(secret)) {
+    const expected = await createShareSignature(id, key);
+    if (signature === expected) {
+      return { valid: true, id, signed: true };
+    }
+  }
+  return { valid: false, id: '', signed: false };
 }
 
 export function validateShareCreateRequest(request) {
@@ -193,6 +203,14 @@ async function createShareSignature(id, secret) {
     .slice(0, SHARE_SIGNATURE_HEX_LENGTH / 2)
     .map(b => b.toString(16).padStart(2, '0'))
     .join('');
+}
+
+function getShareSigningKeys(value) {
+  if (typeof value !== 'string') return [];
+  return value
+    .split(/[\r\n,]+/)
+    .map(part => part.trim())
+    .filter(Boolean);
 }
 
 function sanitizeRow(row) {

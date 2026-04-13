@@ -1,4 +1,5 @@
 import {
+  hasShareSigningKeys,
   isPendingShareId,
   jsonResponse,
   methodNotAllowed,
@@ -16,7 +17,7 @@ export async function onRequest(context) {
   }
 
   const shareToken = context.params && context.params.id ? context.params.id : '';
-  if (shareToken.includes('.') && !context.env.SHARE_SIGNING_KEY) {
+  if (shareToken.includes('.') && !hasShareSigningKeys(context.env.SHARE_SIGNING_KEY)) {
     return missingBindingResponse('SHARE_SIGNING_KEY');
   }
   const token = await resolveShareToken(shareToken, context.env.SHARE_SIGNING_KEY);
