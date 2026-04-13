@@ -1,10 +1,10 @@
 import {
   isPendingShareId,
-  isValidShareId,
   jsonResponse,
   methodNotAllowed,
   missingBindingResponse,
-  parseStoredShare
+  parseStoredShare,
+  resolveShareToken
 } from '../_share.js';
 
 export async function onRequest(context) {
@@ -12,18 +12,22 @@ export async function onRequest(context) {
     return methodNotAllowed('GET');
   }
   if (!context.env || !context.env.SHARES) {
-    return missingBindingResponse();
+    return missingBindingResponse('SHARES');
   }
 
-  const shareId = context.params && context.params.id ? context.params.id : '';
-  if (!isValidShareId(shareId)) {
+  const shareToken = context.params && context.params.id ? context.params.id : '';
+  if (shareToken.includes('.') && !context.env.SHARE_SIGNING_KEY) {
+    return missingBindingResponse('SHARE_SIGNING_KEY');
+  }
+  const token = await resolveShareToken(shareToken, context.env.SHARE_SIGNING_KEY);
+  if (!token.valid) {
     return jsonResponse({ error: 'Invalid share id.' }, 400);
   }
 
-  const raw = await context.env.SHARES.get(shareId);
+  const raw = await context.env.SHARES.get(token.id);
   const payload = parseStoredShare(raw);
   if (!payload) {
-    if (isPendingShareId(shareId)) {
+    if (token.signed && isPendingShareId(token.id)) {
       return jsonResponse({ error: 'Share is still propagating.', pending: true }, 202);
     }
     return jsonResponse({ error: 'Share not found.' }, 404);

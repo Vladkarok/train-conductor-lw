@@ -1,6 +1,7 @@
 import {
   SHARE_TTL_SECONDS,
   createShareId,
+  createShareToken,
   jsonResponse,
   methodNotAllowed,
   missingBindingResponse,
@@ -13,7 +14,10 @@ export async function onRequest(context) {
     return methodNotAllowed('POST');
   }
   if (!context.env || !context.env.SHARES) {
-    return missingBindingResponse();
+    return missingBindingResponse('SHARES');
+  }
+  if (!context.env.SHARE_SIGNING_KEY) {
+    return missingBindingResponse('SHARE_SIGNING_KEY');
   }
 
   const requestIssue = validateShareCreateRequest(context.request);
@@ -33,9 +37,10 @@ export async function onRequest(context) {
   }), {
     expirationTtl: SHARE_TTL_SECONDS
   });
+  const token = await createShareToken(id, context.env.SHARE_SIGNING_KEY);
 
   return jsonResponse({
-    id,
+    id: token,
     expiresIn: SHARE_TTL_SECONDS
   }, 201);
 }

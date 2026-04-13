@@ -33,13 +33,14 @@ npx serve .
 ```
 
 Deploy to **Cloudflare Pages**, **GitHub Pages**, **Netlify**, or any static hosting.
-Short-link sharing requires **Cloudflare Pages Functions + a KV binding named `SHARES`**. On plain static hosting, `.json` download/import still works.
+Short-link sharing requires **Cloudflare Pages Functions + a KV binding named `SHARES` + a secret text binding named `SHARE_SIGNING_KEY`**. On plain static hosting, `.json` download/import still works.
 
 For Cloudflare short-link sharing:
 - bind a Workers KV namespace to the Pages project as `SHARES`
+- add a secret text binding as `SHARE_SIGNING_KEY`
 - protect `POST /api/share` with a rate-limit rule in Cloudflare WAF
 - the function only accepts same-origin `application/json` share creation requests
-- fresh share links may take a moment to propagate globally, so the API marks only newly-created links as pending and the frontend retries those briefly
+- fresh signed share links may take a moment to propagate globally, so the API marks only newly-created signed links as pending and the frontend retries those briefly
 
 ## Tech Stack
 
