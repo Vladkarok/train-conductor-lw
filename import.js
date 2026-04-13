@@ -265,8 +265,9 @@ function flashButton(btn, msgKey, duration) {
 
 function flashIconButton(btn, msgKey, duration) {
   const orig = btn.innerHTML;
-  btn.innerHTML = '&#10003;';
-  btn.style.color = 'var(--green)';
+  const isSuccess = /success|copied|loaded/i.test(msgKey);
+  btn.innerHTML = isSuccess ? '&#10003;' : '&#10005;';
+  btn.style.color = isSuccess ? 'var(--green)' : 'var(--danger)';
   setTimeout(() => { btn.innerHTML = orig; btn.style.color = ''; }, duration || 1500);
 }
 
@@ -276,7 +277,7 @@ document.getElementById('importScheduleBtn').addEventListener('click', () => {
     if (!result) return;
     const parsed = parseScheduleData(result.data);
     if (!parsed || !parsed.length) {
-      flashButton(document.getElementById('importScheduleBtn'), 'importError');
+      flashIconButton(document.getElementById('importScheduleBtn'), 'importError');
       return;
     }
     // Check if JSON share file included roster
@@ -303,7 +304,7 @@ document.getElementById('importScheduleBtn').addEventListener('click', () => {
     saveRoster();
     renderTable();
     renderRoster();
-    flashButton(document.getElementById('importScheduleBtn'), 'importSuccess');
+    flashIconButton(document.getElementById('importScheduleBtn'), 'importSuccess');
   });
 });
 
@@ -313,7 +314,7 @@ document.getElementById('importRosterBtn').addEventListener('click', () => {
     if (!result) return;
     const entries = parseRosterData(result.data);
     if (!entries.length) {
-      flashButton(document.getElementById('importRosterBtn'), 'importError');
+      flashIconButton(document.getElementById('importRosterBtn'), 'importError');
       return;
     }
     if (result.mode === 'replace') {

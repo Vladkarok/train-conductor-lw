@@ -1,8 +1,10 @@
 // ── Roster ──────────────────────────────────────────
 const ROSTER_KEY = 'schedule_roster';
 const ROSTER_VIS_KEY = 'schedule_roster_vis';
+const ROSTER_HIGHLIGHT_KEY = 'schedule_roster_highlight';
 let roster = {};
 let rosterVisible = false;
+let highlightedRosterKey = localStorage.getItem(ROSTER_HIGHLIGHT_KEY) || '';
 
 function normalizeRosterEntry(entry) {
   if (!entry) return entry;
@@ -38,6 +40,13 @@ function loadRoster() {
   renderRoster();
 }
 function saveRoster() { localStorage.setItem(ROSTER_KEY, JSON.stringify(roster)); }
+function saveHighlightedRosterKey() {
+  if (highlightedRosterKey) {
+    localStorage.setItem(ROSTER_HIGHLIGHT_KEY, highlightedRosterKey);
+  } else {
+    localStorage.removeItem(ROSTER_HIGHLIGHT_KEY);
+  }
+}
 
 function addToRoster(name) {
   if (!name) return;
@@ -165,7 +174,7 @@ function renderRoster() {
         (e.r4 ? `<span class="roster-mark-badge roster-r4-toggle active">R4</span>` : '') +
         (e.left ? `<span class="roster-mark-badge roster-left-toggle active">${escapeHtml(t('leftBadge'))}</span>` : '') +
       `</span>` : '') +
-      `<span class="roster-name${e.total === 0 ? ' zero' : ''}${e.left ? ' left' : ''}" data-key="${e.key}" title="${escapeHtml(e.display)}">${escapeHtml(e.display)}</span>` +
+      `<span class="roster-name${e.total === 0 ? ' zero' : ''}${e.left ? ' left' : ''}${e.key === highlightedRosterKey ? ' highlighted' : ''}" data-key="${e.key}" title="${escapeHtml(e.display)}">${escapeHtml(e.display)}</span>` +
       `<span class="roster-counts">` +
         `<span class="roster-total${e.total === 0 ? ' zero' : ''}">${e.total}</span>` +
         (e.cond ? `<span class="occ-stats-badge cond">${cLabel} ${e.cond}</span>` : '') +
@@ -397,10 +406,18 @@ document.getElementById('rosterBody').addEventListener('click', (e) => {
   const body = document.getElementById('rosterBody');
   let longPressTimer = null;
 
+  function toggleRosterHighlight(key) {
+    highlightedRosterKey = highlightedRosterKey === key ? '' : key;
+    saveHighlightedRosterKey();
+    renderTable();
+    renderRoster();
+  }
+
   function showRosterMarkMenu(x, y, key) {
     if (!roster[key]) return;
     const hasR4 = roster[key].r4;
     const hasLeft = roster[key].left;
+    const isHighlighted = highlightedRosterKey === key;
     const name = roster[key].display;
 
     // Reuse the existing R4 menu infrastructure
@@ -431,6 +448,18 @@ document.getElementById('rosterBody').addEventListener('click', (e) => {
       toggleLeftPlayer(name);
     });
     menu.appendChild(leftBtn);
+
+    const divider2 = document.createElement('div');
+    divider2.className = 'r4-menu-divider';
+    menu.appendChild(divider2);
+
+    const highlightBtn = document.createElement('button');
+    highlightBtn.textContent = isHighlighted ? t('rosterUnhighlight') : t('rosterHighlight');
+    highlightBtn.addEventListener('click', () => {
+      menu.remove();
+      toggleRosterHighlight(key);
+    });
+    menu.appendChild(highlightBtn);
 
     document.body.appendChild(menu);
 

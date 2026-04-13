@@ -41,6 +41,8 @@ const TRANSLATIONS = {
     leftRemoveAll: 'Unmark Left — all "{name}"',
     rosterMarkLeft: 'Mark Left',
     rosterUnmarkLeft: 'Unmark Left',
+    rosterHighlight: 'Highlight in schedule',
+    rosterUnhighlight: 'Clear highlight',
     importSchedule: 'Import Schedule',
     importRoster: 'Import Roster',
     importScheduleTitle: 'Import Schedule',
@@ -76,13 +78,13 @@ const TRANSLATIONS = {
     downloadRoster: 'Download roster',
     hintsTips: 'Tips',
     hintsDismiss: 'Got it',
-    hintR4: 'Right-click (long-press on mobile) a name for marks or rename',
+    hintR4: 'Right-click (long-press on mobile) a name for marks, highlight, or rename',
     hintRename: 'Click a name in Roster to rename it everywhere',
     hintNotes: 'Add notes after a name: Smith (Birthday) — notes are preserved, name still matches',
     hintDrag: 'Drag the highlighted occurrence rows to slide the window',
     hintDateFill: 'Click a date cell to auto-fill sequential dates',
     hintKeyboard: 'Tab / Enter / Arrow keys to navigate; Ctrl+Z / Y for undo-redo',
-    hintSubRow: 'Click + next to a row to add a sub-row under it',
+    hintSubRow: 'Top + adds a newest row, bottom + adds an older past row, and row + adds a sub-row',
     rename: 'Rename',
     renameAll: 'Rename "{name}" everywhere',
     renamePrompt: 'New name for "{name}":',
@@ -134,6 +136,8 @@ const TRANSLATIONS = {
     leftRemoveAll: 'Зняти Вийшов — усі "{name}"',
     rosterMarkLeft: 'Позначити Вийшов',
     rosterUnmarkLeft: 'Зняти Вийшов',
+    rosterHighlight: 'Підсвітити в розкладі',
+    rosterUnhighlight: 'Зняти підсвітку',
     importSchedule: 'Імпорт розкладу',
     importRoster: 'Імпорт складу',
     importScheduleTitle: 'Імпорт розкладу',
@@ -169,13 +173,13 @@ const TRANSLATIONS = {
     downloadRoster: 'Завантажити склад',
     hintsTips: 'Підказки',
     hintsDismiss: 'Зрозуміло',
-    hintR4: 'ПКМ (довге натискання) на імені для позначок або перейменування',
+    hintR4: 'ПКМ (довге натискання) на імені для позначок, підсвітки або перейменування',
     hintRename: 'Клікніть на ім\'я в Складі щоб перейменувати всюди',
     hintNotes: 'Додайте нотатку після імені: Smith (День народження) — нотатки зберігаються, ім\'я розпізнається',
     hintDrag: 'Перетягніть підсвічені рядки повторень для переміщення вікна',
     hintDateFill: 'Клікніть на дату для автозаповнення послідовних дат',
     hintKeyboard: 'Tab / Enter / Стрілки для навігації; Ctrl+Z / Y для скасування',
-    hintSubRow: 'Натисніть + біля рядка щоб додати під-рядок',
+    hintSubRow: 'Верхній + додає новий верхній рядок, нижній + додає старий рядок, а + біля рядка додає під-рядок',
     rename: 'Перейменувати',
     renameAll: 'Перейменувати "{name}" всюди',
     renamePrompt: 'Нове ім\'я для "{name}":',
@@ -227,6 +231,8 @@ const TRANSLATIONS = {
     leftRemoveAll: 'Retirer parti — tous "{name}"',
     rosterMarkLeft: 'Marquer parti',
     rosterUnmarkLeft: 'Retirer parti',
+    rosterHighlight: 'Surligner dans le planning',
+    rosterUnhighlight: 'Effacer le surlignage',
     importSchedule: 'Importer programme',
     importRoster: 'Importer effectif',
     importScheduleTitle: 'Importer le programme',
@@ -262,13 +268,13 @@ const TRANSLATIONS = {
     downloadRoster: "Télécharger l'effectif",
     hintsTips: 'Astuces',
     hintsDismiss: 'Compris',
-    hintR4: 'Clic droit (appui long) sur un nom pour les marques ou renommer',
+    hintR4: 'Clic droit (appui long) sur un nom pour les marques, le surlignage ou renommer',
     hintRename: "Cliquez sur un nom dans l'Effectif pour le renommer partout",
     hintNotes: 'Ajoutez une note après le nom : Smith (Anniversaire) — les notes sont conservées',
     hintDrag: "Faites glisser les lignes surlignées pour déplacer la fenêtre",
     hintDateFill: 'Cliquez sur une date pour remplir automatiquement',
     hintKeyboard: 'Tab / Entrée / Flèches pour naviguer ; Ctrl+Z / Y pour annuler',
-    hintSubRow: 'Cliquez + à côté d\'une ligne pour ajouter une sous-ligne',
+    hintSubRow: 'Le + du haut ajoute une ligne récente, le + du bas ajoute une ligne plus ancienne, et le + d\'une ligne ajoute une sous-ligne',
     rename: 'Renommer',
     renameAll: 'Renommer "{name}" partout',
     renamePrompt: 'Nouveau nom pour "{name}" :',
@@ -307,7 +313,7 @@ function applyLang() {
   document.getElementById('rosterToggle').textContent = t('roster');
   document.getElementById('rosterTitle').textContent = t('roster');
   document.getElementById('rosterInput').placeholder = t('rosterAdd');
-  document.getElementById('importScheduleBtn').textContent = t('importSchedule');
+  document.getElementById('importScheduleBtn').title = t('importSchedule');
   document.getElementById('importRosterBtn').title = t('importRoster');
   document.getElementById('shareBtn').textContent = t('share');
   document.getElementById('addRowInline').title = t('addNewestRow');
@@ -742,16 +748,25 @@ function renderTable() {
   function inWin(idx) { return w && w.windowIndices.has(idx); }
 
   function cellHtml(value, placeholder, marks, counts) {
+    const isHighlighted = typeof highlightedRosterKey !== 'undefined' &&
+      highlightedRosterKey &&
+      nameKey(value) === highlightedRosterKey;
     const markTags =
       (marks.r4 ? '<span class="r4-badge">R4</span>' : '') +
       (marks.left ? `<span class="left-badge">${escapeHtml(t('leftBadge'))}</span>` : '');
     if (!value) return `<span class="placeholder">${escapeHtml(placeholder)}</span>`;
     if (counts) {
-      const cls = [occClass(value, counts), marks.left ? 'left-name' : ''].filter(Boolean).join(' ');
+      const cls = [
+        occClass(value, counts),
+        marks.left ? 'left-name' : '',
+        isHighlighted ? 'highlighted-name' : ''
+      ].filter(Boolean).join(' ');
       const safe = escapeHtml(value);
       return (cls ? `<span class="${cls}">${safe}</span>` : safe) + markTags;
     }
-    return (marks.left ? `<span class="left-name">${escapeHtml(value)}</span>` : escapeHtml(value)) + markTags;
+    const nameClasses = [marks.left ? 'left-name' : '', isHighlighted ? 'highlighted-name' : '']
+      .filter(Boolean).join(' ');
+    return (nameClasses ? `<span class="${nameClasses}">${escapeHtml(value)}</span>` : escapeHtml(value)) + markTags;
   }
 
   let html = '';
@@ -775,8 +790,8 @@ function renderTable() {
 
     html += `<tr${rowClasses(i)} data-id="${row.id}">`;
     html += `<td${span > 1 ? ` rowspan="${span}"` : ''}><div class="cell" data-field="date" data-index="${i}">${dateDisplay}</div></td>`;
-    html += `<td><div class="cell${row.r4c ? ' cell-r4' : ''}${row.leftc ? ' cell-left' : ''}" data-field="conductor" data-index="${i}">${cellHtml(row.conductor, t('conductor'), { r4: row.r4c, left: row.leftc }, inWin(i) ? gCounts : null)}</div></td>`;
-    html += `<td><div class="cell${row.r4v ? ' cell-r4' : ''}${row.leftv ? ' cell-left' : ''}" data-field="vip" data-index="${i}">${cellHtml(row.vip, t('vip'), { r4: row.r4v, left: row.leftv }, inWin(i) ? gCounts : null)}</div></td>`;
+    html += `<td><div class="cell${row.r4c ? ' cell-r4' : ''}${row.leftc ? ' cell-left' : ''}${typeof highlightedRosterKey !== 'undefined' && highlightedRosterKey && nameKey(row.conductor) === highlightedRosterKey ? ' cell-highlighted-name' : ''}" data-field="conductor" data-index="${i}">${cellHtml(row.conductor, t('conductor'), { r4: row.r4c, left: row.leftc }, inWin(i) ? gCounts : null)}</div></td>`;
+    html += `<td><div class="cell${row.r4v ? ' cell-r4' : ''}${row.leftv ? ' cell-left' : ''}${typeof highlightedRosterKey !== 'undefined' && highlightedRosterKey && nameKey(row.vip) === highlightedRosterKey ? ' cell-highlighted-name' : ''}" data-field="vip" data-index="${i}">${cellHtml(row.vip, t('vip'), { r4: row.r4v, left: row.leftv }, inWin(i) ? gCounts : null)}</div></td>`;
     html += `<td><div class="row-actions">`;
     html += `<button class="btn-subrow" data-index="${i}" title="${t('addSubRow')}"><svg width="12" height="12" viewBox="0 0 16 16"><path d="M8 1a1 1 0 0 1 1 1v5h5a1 1 0 1 1 0 2H9v5a1 1 0 1 1-2 0V9H2a1 1 0 0 1 0-2h5V2a1 1 0 0 1 1-1z"/></svg></button>`;
     html += `<button class="btn-delete" data-index="${i}" title="Delete">&times;</button>`;
@@ -786,8 +801,8 @@ function renderTable() {
       const si = groupRows[k];
       const sr = rows[si];
       html += `<tr${rowClasses(si, 'subrow')} data-id="${sr.id}">`;
-      html += `<td><div class="cell${sr.r4c ? ' cell-r4' : ''}${sr.leftc ? ' cell-left' : ''}" data-field="conductor" data-index="${si}">${cellHtml(sr.conductor, t('conductor'), { r4: sr.r4c, left: sr.leftc }, inWin(si) ? gCounts : null)}</div></td>`;
-      html += `<td><div class="cell${sr.r4v ? ' cell-r4' : ''}${sr.leftv ? ' cell-left' : ''}" data-field="vip" data-index="${si}">${cellHtml(sr.vip, t('vip'), { r4: sr.r4v, left: sr.leftv }, inWin(si) ? gCounts : null)}</div></td>`;
+      html += `<td><div class="cell${sr.r4c ? ' cell-r4' : ''}${sr.leftc ? ' cell-left' : ''}${typeof highlightedRosterKey !== 'undefined' && highlightedRosterKey && nameKey(sr.conductor) === highlightedRosterKey ? ' cell-highlighted-name' : ''}" data-field="conductor" data-index="${si}">${cellHtml(sr.conductor, t('conductor'), { r4: sr.r4c, left: sr.leftc }, inWin(si) ? gCounts : null)}</div></td>`;
+      html += `<td><div class="cell${sr.r4v ? ' cell-r4' : ''}${sr.leftv ? ' cell-left' : ''}${typeof highlightedRosterKey !== 'undefined' && highlightedRosterKey && nameKey(sr.vip) === highlightedRosterKey ? ' cell-highlighted-name' : ''}" data-field="vip" data-index="${si}">${cellHtml(sr.vip, t('vip'), { r4: sr.r4v, left: sr.leftv }, inWin(si) ? gCounts : null)}</div></td>`;
       html += `<td><div class="row-actions">`;
       html += `<button class="btn-subrow" data-index="${si}" title="${t('addSubRow')}"><svg width="12" height="12" viewBox="0 0 16 16"><path d="M8 1a1 1 0 0 1 1 1v5h5a1 1 0 1 1 0 2H9v5a1 1 0 1 1-2 0V9H2a1 1 0 0 1 0-2h5V2a1 1 0 0 1 1-1z"/></svg></button>`;
       html += `<button class="btn-delete" data-index="${si}" title="Delete">&times;</button>`;

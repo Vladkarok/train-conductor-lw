@@ -503,6 +503,23 @@ body.occ-drag-ready tr.in-window.window-bottom > td {
   color: #94a3b8 !important;
   opacity: .9;
 }
+.highlighted-name {
+  color: #fef08a !important;
+  font-weight: 700;
+}
+.cell-highlighted-name {
+  background: linear-gradient(135deg, rgba(250,204,21,.14), rgba(245,158,11,.08));
+  box-shadow: inset 0 0 0 1px rgba(250,204,21,.45);
+}
+.cell-highlighted-name.cell-r4 {
+  background: linear-gradient(135deg, rgba(240,171,252,.11), rgba(250,204,21,.1));
+}
+.cell-highlighted-name.cell-left {
+  background: linear-gradient(135deg, rgba(148,163,184,.12), rgba(250,204,21,.1));
+}
+.cell-highlighted-name.cell-r4.cell-left {
+  background: linear-gradient(135deg, rgba(240,171,252,.12), rgba(250,204,21,.1), rgba(148,163,184,.12));
+}
 
 /* R4 context menu */
 .r4-menu {
@@ -766,6 +783,10 @@ body.occ-drag-ready tr.in-window.window-bottom > td {
 .roster-name:hover { background: var(--pill-bg); }
 .roster-name.zero { color: var(--danger); opacity: .7; }
 .roster-name.left { color: #94a3b8; }
+.roster-name.highlighted {
+  background: rgba(250,204,21,.12);
+  color: #fef08a;
+}
 .roster-counts {
   display: flex;
   align-items: center;
