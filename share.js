@@ -1,6 +1,5 @@
 // ── Share via short links / JSON fallback ──────────
 const SHORT_SHARE_HASH_PREFIX = '#s=';
-const LEGACY_SHARE_HASH_PREFIX = '#d=';
 const SHARE_API_PATH = '/api/share';
 let cachedShareFingerprint = '';
 let cachedShareUrl = '';
@@ -23,18 +22,6 @@ function buildShortShareUrl(id) {
 
 function clearShareHash() {
   history.replaceState(null, '', window.location.pathname + window.location.search);
-}
-
-function decodeLegacyShareHash(hash) {
-  if (!hash || !hash.startsWith(LEGACY_SHARE_HASH_PREFIX)) return null;
-  try {
-    const compressed = hash.slice(LEGACY_SHARE_HASH_PREFIX.length);
-    const json = LZString.decompressFromEncodedURIComponent(compressed);
-    if (!json) return null;
-    return JSON.parse(json);
-  } catch {
-    return null;
-  }
 }
 
 function getShortShareId(hash) {
@@ -96,25 +83,22 @@ async function fetchSharedPayload(id) {
 
 // ── Load from URL on page open ─────────────────────
 async function loadFromUrl() {
-  const legacyPayload = decodeLegacyShareHash(window.location.hash);
-  let payload = legacyPayload;
+  const shareId = getShortShareId(window.location.hash);
+  if (!shareId) return;
 
-  if (!payload) {
-    const shareId = getShortShareId(window.location.hash);
-    if (!shareId) return;
-    try {
-      const result = await fetchSharedPayload(shareId);
-      if (result.missing) {
-        clearShareHash();
-        alert(t('shareMissing'));
-        return;
-      }
-      payload = result.payload;
-    } catch (err) {
+  let payload = null;
+  try {
+    const result = await fetchSharedPayload(shareId);
+    if (result.missing) {
       clearShareHash();
-      alert((err && err.message) || t('shareError'));
+      alert(t('shareMissing'));
       return;
     }
+    payload = result.payload;
+  } catch (err) {
+    clearShareHash();
+    alert((err && err.message) || t('shareError'));
+    return;
   }
 
   if (!payload || !payload.rows) return;

@@ -40,7 +40,6 @@ Short-link sharing requires **Cloudflare Pages Functions + a KV binding named `S
 - Pure HTML / CSS / JavaScript — no frameworks, no dependencies
 - All data stored in `localStorage`
 - Cloudflare Pages Functions + Workers KV for short share links
-- [lz-string](https://github.com/pieroxy/lz-string) remains vendored for backward compatibility with old embedded share URLs
 
 ## Project Structure
 
@@ -51,10 +50,9 @@ occurrence.js      — occurrence counting and stats panel
 roster.js          — roster management, R4 system, context menus
 import.js          — CSV/TSV/JSON import, file download, clipboard export
 hints.js           — tips panel for feature discoverability
-share.js           — short-link sharing UI, JSON download, legacy URL import
+share.js           — short-link sharing UI and JSON download
 functions/api/     — Cloudflare Pages Functions for short-link storage/fetch
 styles.css         — all styles, dark theme, responsive
-vendor/            — third-party libraries (lz-string)
 ```
 
 ## License
