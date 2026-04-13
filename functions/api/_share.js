@@ -43,7 +43,7 @@ export function createShareId() {
 }
 
 export function isValidShareId(value) {
-  return typeof value === 'string' && /^(?:[a-f0-9]{32}|s[a-f0-9]{32})$/i.test(value);
+  return typeof value === 'string' && /^[a-f0-9]{32}$/i.test(value);
 }
 
 export function isPendingShareId(value) {
@@ -80,7 +80,7 @@ export async function resolveShareToken(token, secret) {
     return { valid: false, id: '', signed: false };
   }
 
-  const match = token.trim().match(new RegExp(`^((?:[a-f0-9]{32}|s[a-f0-9]{32}))\\.([a-f0-9]{${SHARE_SIGNATURE_HEX_LENGTH}})$`, 'i'));
+  const match = token.trim().match(new RegExp(`^(s[a-f0-9]{32})\\.([a-f0-9]{${SHARE_SIGNATURE_HEX_LENGTH}})$`, 'i'));
   if (!match || !secret) {
     return { valid: false, id: '', signed: false };
   }
