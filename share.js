@@ -1,6 +1,7 @@
 // ── Share via short links / JSON fallback ──────────
 const SHORT_SHARE_HASH_PREFIX = '#s=';
 const SHARE_API_PATH = '/api/share';
+const SHARE_FETCH_RETRY_DELAYS_MS = [250, 750, 1500];
 let cachedShareFingerprint = '';
 let cachedShareUrl = '';
 
@@ -22,6 +23,10 @@ function buildShortShareUrl(id) {
 
 function clearShareHash() {
   history.replaceState(null, '', window.location.pathname + window.location.search);
+}
+
+function wait(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 function getShortShareId(hash) {
@@ -73,14 +78,27 @@ function applySharedPayload(payload) {
 }
 
 async function fetchSharedPayload(id) {
-  const res = await fetch(`${SHARE_API_PATH}/${encodeURIComponent(id)}`, {
-    headers: { Accept: 'application/json' }
-  });
-  const data = await res.json().catch(() => null);
-  if (res.status === 404) return { missing: true };
-  if (!res.ok) throw new Error((data && data.error) || t('shareError'));
-  if (!data || !Array.isArray(data.rows)) throw new Error(t('shareError'));
-  return { payload: data };
+  for (let attempt = 0; attempt <= SHARE_FETCH_RETRY_DELAYS_MS.length; attempt++) {
+    const res = await fetch(`${SHARE_API_PATH}/${encodeURIComponent(id)}`, {
+      cache: 'no-store',
+      headers: { Accept: 'application/json' }
+    });
+    const data = await res.json().catch(() => null);
+
+    if (res.status === 404) {
+      if (attempt < SHARE_FETCH_RETRY_DELAYS_MS.length) {
+        await wait(SHARE_FETCH_RETRY_DELAYS_MS[attempt]);
+        continue;
+      }
+      return { missing: true };
+    }
+
+    if (!res.ok) throw new Error((data && data.error) || t('shareError'));
+    if (!data || !Array.isArray(data.rows)) throw new Error(t('shareError'));
+    return { payload: data };
+  }
+
+  return { missing: true };
 }
 
 // ── Load from URL on page open ─────────────────────

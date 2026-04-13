@@ -4,7 +4,8 @@ import {
   jsonResponse,
   methodNotAllowed,
   missingBindingResponse,
-  parseShareRequest
+  parseShareRequest,
+  validateShareCreateRequest
 } from './_share.js';
 
 export async function onRequest(context) {
@@ -13,6 +14,11 @@ export async function onRequest(context) {
   }
   if (!context.env || !context.env.SHARES) {
     return missingBindingResponse();
+  }
+
+  const requestIssue = validateShareCreateRequest(context.request);
+  if (requestIssue) {
+    return jsonResponse({ error: requestIssue.error }, requestIssue.status);
   }
 
   const parsed = await parseShareRequest(context.request);

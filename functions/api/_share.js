@@ -41,6 +41,32 @@ export function isValidShareId(value) {
   return typeof value === 'string' && /^[a-f0-9]{32}$/i.test(value);
 }
 
+export function validateShareCreateRequest(request) {
+  const contentType = request.headers.get('content-type') || '';
+  if (!/^application\/json\b/i.test(contentType)) {
+    return { error: 'Share requests must use application/json.', status: 415 };
+  }
+
+  const fetchSite = (request.headers.get('sec-fetch-site') || '').toLowerCase();
+  if (fetchSite && !['same-origin', 'same-site', 'none'].includes(fetchSite)) {
+    return { error: 'Cross-site share creation is not allowed.', status: 403 };
+  }
+
+  const origin = request.headers.get('origin');
+  if (origin) {
+    try {
+      const requestOrigin = new URL(request.url).origin;
+      if (new URL(origin).origin !== requestOrigin) {
+        return { error: 'Cross-origin share creation is not allowed.', status: 403 };
+      }
+    } catch {
+      return { error: 'Invalid Origin header.', status: 400 };
+    }
+  }
+
+  return null;
+}
+
 export async function parseShareRequest(request) {
   const raw = await request.text();
   const byteLength = new TextEncoder().encode(raw).length;
