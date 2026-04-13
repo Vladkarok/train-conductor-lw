@@ -310,15 +310,31 @@ const DATA_KEY = 'schedule_data';
 const THEME_KEY = 'schedule_theme';
 let currentLang = localStorage.getItem(LANG_KEY) || 'en';
 let currentTheme = 'dark';
+let cancelTouchClickSuppressor = null;
 
 function t(key) { return TRANSLATIONS[currentLang][key] || TRANSLATIONS.en[key] || key; }
 
 function suppressTouchClick(ms) {
-  window.__touchClickSuppressUntil = Date.now() + (ms || 700);
-}
+  if (cancelTouchClickSuppressor) cancelTouchClickSuppressor();
 
-function isTouchClickSuppressed() {
-  return Date.now() < (window.__touchClickSuppressUntil || 0);
+  let active = true;
+  const onClick = (e) => {
+    if (!active) return;
+    cleanup();
+    e.preventDefault();
+    e.stopImmediatePropagation();
+  };
+  const cleanup = () => {
+    if (!active) return;
+    active = false;
+    clearTimeout(timer);
+    window.removeEventListener('click', onClick, true);
+    if (cancelTouchClickSuppressor === cleanup) cancelTouchClickSuppressor = null;
+  };
+  const timer = setTimeout(cleanup, ms || 700);
+
+  window.addEventListener('click', onClick, true);
+  cancelTouchClickSuppressor = cleanup;
 }
 
 function getPreferredTheme() {
@@ -1068,7 +1084,6 @@ function moveTo(rowIndex, field, direction) {
 
 // ── Event delegation ─────────────────────────────────
 tbody.addEventListener('click', (e) => {
-  if (isTouchClickSuppressed()) return;
   if (e.target.closest('.fill-hint')) return;
 
   const subBtn = e.target.closest('.btn-subrow');

@@ -361,7 +361,6 @@ function renderRoster() {
   });
 
   document.addEventListener('click', (e) => {
-    if (isTouchClickSuppressed()) return;
     if (menu && !menu.contains(e.target)) closeMenu();
   });
   document.addEventListener('keydown', (e) => {
@@ -395,7 +394,6 @@ document.getElementById('rosterInput').addEventListener('keydown', (e) => {
 });
 
 document.getElementById('rosterBody').addEventListener('click', (e) => {
-  if (isTouchClickSuppressed()) return;
   // Remove
   const removeBtn = e.target.closest('.roster-remove');
   if (removeBtn) {
@@ -492,7 +490,6 @@ document.getElementById('rosterBody').addEventListener('click', (e) => {
     if (rect.bottom > window.innerHeight) menu.style.top = (window.innerHeight - rect.height - 8) + 'px';
 
     const close = (e) => {
-      if (isTouchClickSuppressed()) return;
       if (!menu.contains(e.target)) { menu.remove(); document.removeEventListener('click', close); }
     };
     setTimeout(() => document.addEventListener('click', close), 10);
