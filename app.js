@@ -98,6 +98,8 @@ const TRANSLATIONS = {
     resetConfirmText: 'Type RESET to confirm:',
     resetConfirm: 'Reset everything',
     resetCancel: 'Cancel',
+    themeToLight: 'Switch to light theme',
+    themeToDark: 'Switch to dark theme',
   },
   ua: {
     title: 'Розклад поїздів альянсу',
@@ -197,6 +199,8 @@ const TRANSLATIONS = {
     resetConfirmText: 'Введіть RESET для підтвердження:',
     resetConfirm: 'Скинути все',
     resetCancel: 'Скасувати',
+    themeToLight: 'Перемкнути на світлу тему',
+    themeToDark: 'Перемкнути на темну тему',
   },
   fr: {
     title: 'Horaire de train d\'alliance',
@@ -296,14 +300,44 @@ const TRANSLATIONS = {
     resetConfirmText: 'Tapez RESET pour confirmer :',
     resetConfirm: 'Tout réinitialiser',
     resetCancel: 'Annuler',
+    themeToLight: 'Passer au thème clair',
+    themeToDark: 'Passer au thème sombre',
   },
 };
 
 const LANG_KEY = 'schedule_lang';
 const DATA_KEY = 'schedule_data';
+const THEME_KEY = 'schedule_theme';
 let currentLang = localStorage.getItem(LANG_KEY) || 'en';
+let currentTheme = 'dark';
 
 function t(key) { return TRANSLATIONS[currentLang][key] || TRANSLATIONS.en[key] || key; }
+
+function getPreferredTheme() {
+  const saved = localStorage.getItem(THEME_KEY);
+  if (saved === 'light' || saved === 'dark') return saved;
+  return window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+}
+
+function applyTheme() {
+  document.documentElement.dataset.theme = currentTheme;
+  const themeBtn = document.getElementById('themeToggle');
+  if (!themeBtn) return;
+  const label = currentTheme === 'light' ? t('themeToDark') : t('themeToLight');
+  themeBtn.title = label;
+  themeBtn.setAttribute('aria-label', label);
+}
+
+function loadTheme() {
+  currentTheme = getPreferredTheme();
+  applyTheme();
+}
+
+function toggleTheme() {
+  currentTheme = currentTheme === 'light' ? 'dark' : 'light';
+  localStorage.setItem(THEME_KEY, currentTheme);
+  applyTheme();
+}
 
 function applyLang() {
   document.documentElement.lang = currentLang === 'ua' ? 'uk' : currentLang;
@@ -337,6 +371,7 @@ function applyLang() {
   document.getElementById('resetModalConfirmText').innerHTML = t('resetConfirmText').replace('RESET', '<strong>RESET</strong>');
   document.getElementById('resetModalConfirm').textContent = t('resetConfirm');
   document.getElementById('resetModalCancel').textContent = t('resetCancel');
+  applyTheme();
   document.querySelectorAll('.lang-btn').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.lang === currentLang);
   });
@@ -1151,6 +1186,7 @@ document.querySelectorAll('.lang-btn').forEach(btn => {
     applyLang();
   });
 });
+document.getElementById('themeToggle').addEventListener('click', toggleTheme);
 
 // ── Reset all data ──────────────────────────────────
 (function initReset() {
@@ -1186,7 +1222,7 @@ document.querySelectorAll('.lang-btn').forEach(btn => {
     if (input.value.trim() !== 'RESET') return;
     const keys = [
       'schedule_data', 'schedule_roster', 'schedule_occ',
-      'schedule_lang', 'schedule_roster_vis', 'schedule_hints_seen'
+      'schedule_lang', 'schedule_roster_vis', 'schedule_hints_seen', 'schedule_theme'
     ];
     keys.forEach(k => localStorage.removeItem(k));
     location.reload();
