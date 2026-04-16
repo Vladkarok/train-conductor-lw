@@ -909,7 +909,7 @@ function renderTable() {
     leader += `<td><div class="cell${row.r4c ? ' cell-r4' : ''}${row.leftc ? ' cell-left' : ''}${typeof highlightedRosterKey !== 'undefined' && highlightedRosterKey && nameKey(row.conductor) === highlightedRosterKey ? ' cell-highlighted-name' : ''}" data-field="conductor" data-index="${i}">${cellHtml(row.conductor, t('conductor'), { r4: row.r4c, left: row.leftc }, inWin(i) ? gCounts : null)}</div></td>`;
     leader += `<td><div class="cell${row.r4v ? ' cell-r4' : ''}${row.leftv ? ' cell-left' : ''}${typeof highlightedRosterKey !== 'undefined' && highlightedRosterKey && nameKey(row.vip) === highlightedRosterKey ? ' cell-highlighted-name' : ''}" data-field="vip" data-index="${i}">${cellHtml(row.vip, t('vip'), { r4: row.r4v, left: row.leftv }, inWin(i) ? gCounts : null)}</div></td>`;
     leader += `<td><div class="row-actions">`;
-    leader += `<button class="btn-subrow" data-index="${i}" title="${t('addSubRow')}"><svg width="12" height="12" viewBox="0 0 16 16"><path d="M8 1a1 1 0 0 1 1 1v5h5a1 1 0 1 1 0 2H9v5a1 1 0 1 1-2 0V9H2a1 1 0 0 1 0-2h5V2a1 1 0 0 1 1-1z"/></svg></button>`;
+    leader += `<button class="btn-subrow" data-index="${i}" title="${escapeAttr(t('addSubRow'))}"><svg width="12" height="12" viewBox="0 0 16 16"><path d="M8 1a1 1 0 0 1 1 1v5h5a1 1 0 1 1 0 2H9v5a1 1 0 1 1-2 0V9H2a1 1 0 0 1 0-2h5V2a1 1 0 0 1 1-1z"/></svg></button>`;
     leader += `<button class="btn-delete" data-index="${i}" title="Delete">&times;</button>`;
     leader += `</div></td></tr>`;
     segments.push(leader);
@@ -921,7 +921,7 @@ function renderTable() {
       sub += `<td><div class="cell${sr.r4c ? ' cell-r4' : ''}${sr.leftc ? ' cell-left' : ''}${typeof highlightedRosterKey !== 'undefined' && highlightedRosterKey && nameKey(sr.conductor) === highlightedRosterKey ? ' cell-highlighted-name' : ''}" data-field="conductor" data-index="${si}">${cellHtml(sr.conductor, t('conductor'), { r4: sr.r4c, left: sr.leftc }, inWin(si) ? gCounts : null)}</div></td>`;
       sub += `<td><div class="cell${sr.r4v ? ' cell-r4' : ''}${sr.leftv ? ' cell-left' : ''}${typeof highlightedRosterKey !== 'undefined' && highlightedRosterKey && nameKey(sr.vip) === highlightedRosterKey ? ' cell-highlighted-name' : ''}" data-field="vip" data-index="${si}">${cellHtml(sr.vip, t('vip'), { r4: sr.r4v, left: sr.leftv }, inWin(si) ? gCounts : null)}</div></td>`;
       sub += `<td><div class="row-actions">`;
-      sub += `<button class="btn-subrow" data-index="${si}" title="${t('addSubRow')}"><svg width="12" height="12" viewBox="0 0 16 16"><path d="M8 1a1 1 0 0 1 1 1v5h5a1 1 0 1 1 0 2H9v5a1 1 0 1 1-2 0V9H2a1 1 0 0 1 0-2h5V2a1 1 0 0 1 1-1z"/></svg></button>`;
+      sub += `<button class="btn-subrow" data-index="${si}" title="${escapeAttr(t('addSubRow'))}"><svg width="12" height="12" viewBox="0 0 16 16"><path d="M8 1a1 1 0 0 1 1 1v5h5a1 1 0 1 1 0 2H9v5a1 1 0 1 1-2 0V9H2a1 1 0 0 1 0-2h5V2a1 1 0 0 1 1-1z"/></svg></button>`;
       sub += `<button class="btn-delete" data-index="${si}" title="Delete">&times;</button>`;
       sub += `</div></td></tr>`;
       segments.push(sub);

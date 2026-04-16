@@ -210,6 +210,65 @@ describe('parseStoredShare', () => {
   });
 });
 
+describe('parseStoredShare schema version (bare-legacy path)', () => {
+  function bare(extra) {
+    return JSON.stringify({ rows: [], ...extra });
+  }
+
+  it('defaults to version 0 when field absent', () => {
+    const parsed = parseStoredShare(bare({}));
+    expect(parsed).toBeTruthy();
+    expect(parsed.version).toBe(0);
+  });
+
+  it('preserves a valid integer version', () => {
+    const parsed = parseStoredShare(bare({ version: 1 }));
+    expect(parsed).toEqual({ rows: [], version: 1 });
+  });
+
+  it('accepts boundary values 0 and 99', () => {
+    expect(parseStoredShare(bare({ version: 0 })).version).toBe(0);
+    expect(parseStoredShare(bare({ version: 99 })).version).toBe(99);
+  });
+
+  it('rejects out-of-range versions', () => {
+    expect(parseStoredShare(bare({ version: -1 }))).toBe(null);
+    expect(parseStoredShare(bare({ version: 100 }))).toBe(null);
+  });
+
+  it('rejects non-integer version values', () => {
+    expect(parseStoredShare(bare({ version: 1.5 }))).toBe(null);
+    expect(parseStoredShare(bare({ version: '1' }))).toBe(null);
+    expect(parseStoredShare(bare({ version: true }))).toBe(null);
+    expect(parseStoredShare(bare({ version: null }))).toBe(null);
+    expect(parseStoredShare(bare({ version: NaN }))).toBe(null);
+  });
+});
+
+describe('parseStoredShare envelope path (trust-stored contract)', () => {
+  // Envelope shape is produced by the server and NOT re-sanitized on read,
+  // so arbitrary version values pass through. This encodes that contract
+  // so a future regression (e.g. adding validation on the envelope path
+  // without versioning KV entries) is caught.
+  it('passes version through unchanged on the envelope path', () => {
+    const stored = JSON.stringify({
+      createdAt: '2025-01-01T00:00:00.000Z',
+      payload: { rows: [], version: 7 }
+    });
+    expect(parseStoredShare(stored)).toEqual({ rows: [], version: 7 });
+  });
+
+  it('tolerates envelope payloads with no version field', () => {
+    const stored = JSON.stringify({
+      createdAt: '2025-01-01T00:00:00.000Z',
+      payload: { rows: [] }
+    });
+    const parsed = parseStoredShare(stored);
+    expect(parsed).toEqual({ rows: [] });
+    expect(parsed.version).toBeUndefined();
+  });
+});
+
 describe('SHARE_TTL_SECONDS', () => {
   it('is 30 days', () => {
     expect(SHARE_TTL_SECONDS).toBe(60 * 60 * 24 * 30);
