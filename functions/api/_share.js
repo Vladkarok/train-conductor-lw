@@ -4,7 +4,11 @@ const MAX_ROWS = 2000;
 const MAX_ROSTER_ENTRIES = 2000;
 const MAX_TEXT_LENGTH = 160;
 const SHARE_PENDING_WINDOW_SECONDS = 120;
-const SHARE_SIGNATURE_HEX_LENGTH = 12;
+// HMAC signature lengths (hex chars). Writer emits the first; reader accepts any.
+// Keeping 12 in the accept list preserves older short links during the rotation
+// window (30-day TTL) so users don't see broken bookmarks.
+const SHARE_SIG_WRITE_LEN = 24;
+const SHARE_SIG_READ_LENS = [24, 12];
 
 export { SHARE_TTL_SECONDS };
 
@@ -63,7 +67,7 @@ export function isPendingShareId(value) {
 
 export async function createShareToken(id, secret) {
   const [primaryKey] = getShareSigningKeys(secret);
-  const signature = await createShareSignature(id, primaryKey);
+  const signature = await createShareSignature(id, primaryKey, SHARE_SIG_WRITE_LEN);
   return `${id}.${signature}`;
 }
 
@@ -80,15 +84,21 @@ export async function resolveShareToken(token, secret) {
     return { valid: false, id: '', signed: false };
   }
 
-  const match = token.trim().match(new RegExp(`^(s[a-f0-9]{32})\\.([a-f0-9]{${SHARE_SIGNATURE_HEX_LENGTH}})$`, 'i'));
+  // Accept any of the configured signature lengths so links issued under an
+  // older truncation length remain valid until their KV TTL expires.
+  const match = token.trim().match(/^(s[a-f0-9]{32})\.([a-f0-9]+)$/i);
   if (!match || !secret) {
     return { valid: false, id: '', signed: false };
   }
 
   const id = match[1];
   const signature = match[2].toLowerCase();
+  if (!SHARE_SIG_READ_LENS.includes(signature.length)) {
+    return { valid: false, id: '', signed: false };
+  }
+
   for (const key of getShareSigningKeys(secret)) {
-    const expected = await createShareSignature(id, key);
+    const expected = await createShareSignature(id, key, signature.length);
     if (signature === expected) {
       return { valid: true, id, signed: true };
     }
@@ -177,6 +187,17 @@ function sanitizeSharePayload(value) {
 
   const payload = { rows };
 
+  // Optional schema version for forward-compat. Unknown → 0. Reject out-of-range.
+  let version = 0;
+  if (value.version !== undefined) {
+    if (typeof value.version !== 'number' || !Number.isInteger(value.version) ||
+        value.version < 0 || value.version > 99) {
+      return null;
+    }
+    version = value.version;
+  }
+  payload.version = version;
+
   if (value.roster !== undefined) {
     const roster = sanitizeRoster(value.roster);
     if (!roster) {
@@ -188,7 +209,10 @@ function sanitizeSharePayload(value) {
   return payload;
 }
 
-async function createShareSignature(id, secret) {
+async function createShareSignature(id, secret, hexLength) {
+  const lenHex = (typeof hexLength === 'number' && hexLength > 0)
+    ? hexLength
+    : SHARE_SIG_WRITE_LEN;
   const data = new TextEncoder().encode(id);
   const keyData = new TextEncoder().encode(secret);
   const cryptoKey = await crypto.subtle.importKey(
@@ -200,7 +224,7 @@ async function createShareSignature(id, secret) {
   );
   const signature = await crypto.subtle.sign('HMAC', cryptoKey, data);
   return Array.from(new Uint8Array(signature))
-    .slice(0, SHARE_SIGNATURE_HEX_LENGTH / 2)
+    .slice(0, lenHex / 2)
     .map(b => b.toString(16).padStart(2, '0'))
     .join('');
 }
