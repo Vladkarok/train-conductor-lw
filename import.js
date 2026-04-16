@@ -213,6 +213,7 @@ function showImportModal(type) {
 
   overlay.classList.add('visible');
   textarea.focus();
+  const releaseFocus = trapFocus(overlay);
 
   return new Promise((resolve) => {
     function getResult() {
@@ -228,6 +229,7 @@ function showImportModal(type) {
       overlay.removeEventListener('click', onOverlay);
       document.removeEventListener('keydown', onKey);
       fileInput.removeEventListener('change', onFile);
+      releaseFocus();
     }
 
     function onConfirm() { cleanup(); resolve(getResult()); }
@@ -263,12 +265,14 @@ function flashButton(btn, msgKey, duration) {
   }, duration || 1500);
 }
 
-function flashIconButton(btn, msgKey, duration) {
+// opts: { success: boolean, duration?: number }
+function flashIconButton(btn, opts) {
+  const success = !!(opts && opts.success);
+  const duration = (opts && opts.duration) || 1500;
   const orig = btn.innerHTML;
-  const isSuccess = /success|copied|loaded/i.test(msgKey);
-  btn.innerHTML = isSuccess ? '&#10003;' : '&#10005;';
-  btn.style.color = isSuccess ? 'var(--green)' : 'var(--danger)';
-  setTimeout(() => { btn.innerHTML = orig; btn.style.color = ''; }, duration || 1500);
+  btn.innerHTML = success ? '&#10003;' : '&#10005;';
+  btn.style.color = success ? 'var(--green)' : 'var(--danger)';
+  setTimeout(() => { btn.innerHTML = orig; btn.style.color = ''; }, duration);
 }
 
 function splitGroups(arr) {
@@ -337,7 +341,7 @@ document.getElementById('importScheduleBtn').addEventListener('click', () => {
     if (!result) return;
     const parsed = parseScheduleData(result.data);
     if (!parsed || !parsed.length) {
-      flashIconButton(document.getElementById('importScheduleBtn'), 'importError');
+      flashIconButton(document.getElementById('importScheduleBtn'), { success: false });
       return;
     }
     // Check if JSON share file included roster
@@ -364,7 +368,7 @@ document.getElementById('importScheduleBtn').addEventListener('click', () => {
     saveRoster();
     renderTable();
     renderRoster();
-    flashIconButton(document.getElementById('importScheduleBtn'), 'importSuccess');
+    flashIconButton(document.getElementById('importScheduleBtn'), { success: true });
   });
 });
 
@@ -374,7 +378,7 @@ document.getElementById('importRosterBtn').addEventListener('click', () => {
     if (!result) return;
     const entries = parseRosterData(result.data);
     if (!entries.length) {
-      flashIconButton(document.getElementById('importRosterBtn'), 'importError');
+      flashIconButton(document.getElementById('importRosterBtn'), { success: false });
       return;
     }
     if (result.mode === 'replace') {
@@ -390,7 +394,7 @@ document.getElementById('importRosterBtn').addEventListener('click', () => {
     });
     saveRoster();
     renderRoster();
-    flashIconButton(document.getElementById('importRosterBtn'), 'importSuccess');
+    flashIconButton(document.getElementById('importRosterBtn'), { success: true });
   });
 });
 

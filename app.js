@@ -463,6 +463,13 @@ function renamePlayer(oldName, newName) {
     saveRoster();
   }
 
+  // Reconcile marks after rename: the old key has no more cells, the new key
+  // may have merged cells from other sources. Recompute both.
+  let markChanged = false;
+  if (roster[oldKey] && syncRosterMarksForKey(oldKey)) markChanged = true;
+  if (roster[newKey] && syncRosterMarksForKey(newKey)) markChanged = true;
+  if (markChanged) saveRoster();
+
   renderTable();
   renderRoster();
 }
@@ -589,18 +596,21 @@ const undoStack = [];
 const redoStack = [];
 const MAX_HISTORY = 50;
 
-function cloneRoster() { return JSON.parse(JSON.stringify(roster)); }
-
+// Snapshots are stored as JSON strings. Parsing lazily on apply avoids
+// keeping a deep-cloned object graph in memory for every history step.
 function makeSnapshot() {
-  return { rows: cloneRows(rows), roster: cloneRoster() };
+  return JSON.stringify({ rows: rows, roster: roster });
 }
 
 function applySnapshot(snap) {
+  const parsed = typeof snap === 'string'
+    ? JSON.parse(snap)
+    : snap; // tolerate legacy object snapshots if any remain mid-session
   rows.length = 0;
-  snap.rows.forEach(r => rows.push(r));
+  parsed.rows.forEach(r => rows.push(r));
   // Restore roster
   Object.keys(roster).forEach(k => delete roster[k]);
-  Object.keys(snap.roster).forEach(k => { roster[k] = snap.roster[k]; });
+  Object.keys(parsed.roster).forEach(k => { roster[k] = parsed.roster[k]; });
   saveData();
   saveRoster();
   renderTable();
@@ -738,6 +748,7 @@ function showFillModal(index, dateStr) {
 
   const overlay = document.getElementById('modalOverlay');
   overlay.classList.add('visible');
+  const releaseFocus = trapFocus(overlay);
 
   return new Promise((resolve) => {
     function cleanup() {
@@ -746,6 +757,7 @@ function showFillModal(index, dateStr) {
       document.getElementById('modalCancel').removeEventListener('click', onCancel);
       overlay.removeEventListener('click', onOverlay);
       document.removeEventListener('keydown', onKey);
+      releaseFocus();
     }
     function onConfirm() { cleanup(); resolve(fills); }
     function onCancel() { cleanup(); resolve(null); }
@@ -768,6 +780,63 @@ function escapeHtml(s) {
   d.textContent = s;
   return d.innerHTML;
 }
+
+// escapeHtml does not escape quotes; use this for attribute values.
+function escapeAttr(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+// ── Modal focus trap ────────────────────────────────
+// Keeps keyboard focus within the overlay while it is open, and restores
+// focus to the previously-active element when released.
+const FOCUS_SELECTOR = 'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+function getFocusable(root) {
+  return Array.from(root.querySelectorAll(FOCUS_SELECTOR)).filter(el => {
+    if (el.offsetParent === null && el !== document.activeElement) return false;
+    return !el.hasAttribute('disabled') && el.getAttribute('aria-hidden') !== 'true';
+  });
+}
+
+function trapFocus(overlay) {
+  const previousActive = document.activeElement;
+  const focusable = getFocusable(overlay);
+  const first = focusable[0];
+  const last = focusable[focusable.length - 1];
+  if (first && !overlay.contains(document.activeElement)) first.focus();
+
+  function onKey(e) {
+    if (e.key !== 'Tab') return;
+    const list = getFocusable(overlay);
+    if (!list.length) { e.preventDefault(); return; }
+    const f = list[0];
+    const l = list[list.length - 1];
+    if (e.shiftKey && document.activeElement === f) {
+      e.preventDefault();
+      l.focus();
+    } else if (!e.shiftKey && document.activeElement === l) {
+      e.preventDefault();
+      f.focus();
+    }
+  }
+  overlay.addEventListener('keydown', onKey);
+
+  return function release() {
+    overlay.removeEventListener('keydown', onKey);
+    if (previousActive && typeof previousActive.focus === 'function') {
+      try { previousActive.focus(); } catch {}
+    }
+  };
+}
+
+// Per-render cache of the HTML string for each <tr> segment. Used by the diff
+// path in renderTable() to avoid rebuilding untouched rows on every mutation.
+let lastRenderSegments = [];
 
 function renderTable() {
   const w = occ.enabled ? getOccWindow() : null;
@@ -816,7 +885,7 @@ function renderTable() {
     return (nameClasses ? `<span class="${nameClasses}">${escapeHtml(value)}</span>` : escapeHtml(value)) + markTags;
   }
 
-  let html = '';
+  const segments = [];
   let i = 0;
   while (i < rows.length) {
     const row = rows[i];
@@ -835,35 +904,55 @@ function renderTable() {
       ? escapeHtml(dateVal)
       : `<span class="placeholder">${escapeHtml(datePh)}</span>`;
 
-    html += `<tr${rowClasses(i)} data-id="${row.id}">`;
-    html += `<td${span > 1 ? ` rowspan="${span}"` : ''}><div class="cell" data-field="date" data-index="${i}">${dateDisplay}</div></td>`;
-    html += `<td><div class="cell${row.r4c ? ' cell-r4' : ''}${row.leftc ? ' cell-left' : ''}${typeof highlightedRosterKey !== 'undefined' && highlightedRosterKey && nameKey(row.conductor) === highlightedRosterKey ? ' cell-highlighted-name' : ''}" data-field="conductor" data-index="${i}">${cellHtml(row.conductor, t('conductor'), { r4: row.r4c, left: row.leftc }, inWin(i) ? gCounts : null)}</div></td>`;
-    html += `<td><div class="cell${row.r4v ? ' cell-r4' : ''}${row.leftv ? ' cell-left' : ''}${typeof highlightedRosterKey !== 'undefined' && highlightedRosterKey && nameKey(row.vip) === highlightedRosterKey ? ' cell-highlighted-name' : ''}" data-field="vip" data-index="${i}">${cellHtml(row.vip, t('vip'), { r4: row.r4v, left: row.leftv }, inWin(i) ? gCounts : null)}</div></td>`;
-    html += `<td><div class="row-actions">`;
-    html += `<button class="btn-subrow" data-index="${i}" title="${t('addSubRow')}"><svg width="12" height="12" viewBox="0 0 16 16"><path d="M8 1a1 1 0 0 1 1 1v5h5a1 1 0 1 1 0 2H9v5a1 1 0 1 1-2 0V9H2a1 1 0 0 1 0-2h5V2a1 1 0 0 1 1-1z"/></svg></button>`;
-    html += `<button class="btn-delete" data-index="${i}" title="Delete">&times;</button>`;
-    html += `</div></td></tr>`;
+    let leader = `<tr${rowClasses(i)} data-id="${escapeAttr(row.id)}">`;
+    leader += `<td${span > 1 ? ` rowspan="${span}"` : ''}><div class="cell" data-field="date" data-index="${i}">${dateDisplay}</div></td>`;
+    leader += `<td><div class="cell${row.r4c ? ' cell-r4' : ''}${row.leftc ? ' cell-left' : ''}${typeof highlightedRosterKey !== 'undefined' && highlightedRosterKey && nameKey(row.conductor) === highlightedRosterKey ? ' cell-highlighted-name' : ''}" data-field="conductor" data-index="${i}">${cellHtml(row.conductor, t('conductor'), { r4: row.r4c, left: row.leftc }, inWin(i) ? gCounts : null)}</div></td>`;
+    leader += `<td><div class="cell${row.r4v ? ' cell-r4' : ''}${row.leftv ? ' cell-left' : ''}${typeof highlightedRosterKey !== 'undefined' && highlightedRosterKey && nameKey(row.vip) === highlightedRosterKey ? ' cell-highlighted-name' : ''}" data-field="vip" data-index="${i}">${cellHtml(row.vip, t('vip'), { r4: row.r4v, left: row.leftv }, inWin(i) ? gCounts : null)}</div></td>`;
+    leader += `<td><div class="row-actions">`;
+    leader += `<button class="btn-subrow" data-index="${i}" title="${t('addSubRow')}"><svg width="12" height="12" viewBox="0 0 16 16"><path d="M8 1a1 1 0 0 1 1 1v5h5a1 1 0 1 1 0 2H9v5a1 1 0 1 1-2 0V9H2a1 1 0 0 1 0-2h5V2a1 1 0 0 1 1-1z"/></svg></button>`;
+    leader += `<button class="btn-delete" data-index="${i}" title="Delete">&times;</button>`;
+    leader += `</div></td></tr>`;
+    segments.push(leader);
 
     for (let k = 1; k < span; k++) {
       const si = groupRows[k];
       const sr = rows[si];
-      html += `<tr${rowClasses(si, 'subrow')} data-id="${sr.id}">`;
-      html += `<td><div class="cell${sr.r4c ? ' cell-r4' : ''}${sr.leftc ? ' cell-left' : ''}${typeof highlightedRosterKey !== 'undefined' && highlightedRosterKey && nameKey(sr.conductor) === highlightedRosterKey ? ' cell-highlighted-name' : ''}" data-field="conductor" data-index="${si}">${cellHtml(sr.conductor, t('conductor'), { r4: sr.r4c, left: sr.leftc }, inWin(si) ? gCounts : null)}</div></td>`;
-      html += `<td><div class="cell${sr.r4v ? ' cell-r4' : ''}${sr.leftv ? ' cell-left' : ''}${typeof highlightedRosterKey !== 'undefined' && highlightedRosterKey && nameKey(sr.vip) === highlightedRosterKey ? ' cell-highlighted-name' : ''}" data-field="vip" data-index="${si}">${cellHtml(sr.vip, t('vip'), { r4: sr.r4v, left: sr.leftv }, inWin(si) ? gCounts : null)}</div></td>`;
-      html += `<td><div class="row-actions">`;
-      html += `<button class="btn-subrow" data-index="${si}" title="${t('addSubRow')}"><svg width="12" height="12" viewBox="0 0 16 16"><path d="M8 1a1 1 0 0 1 1 1v5h5a1 1 0 1 1 0 2H9v5a1 1 0 1 1-2 0V9H2a1 1 0 0 1 0-2h5V2a1 1 0 0 1 1-1z"/></svg></button>`;
-      html += `<button class="btn-delete" data-index="${si}" title="Delete">&times;</button>`;
-      html += `</div></td></tr>`;
+      let sub = `<tr${rowClasses(si, 'subrow')} data-id="${escapeAttr(sr.id)}">`;
+      sub += `<td><div class="cell${sr.r4c ? ' cell-r4' : ''}${sr.leftc ? ' cell-left' : ''}${typeof highlightedRosterKey !== 'undefined' && highlightedRosterKey && nameKey(sr.conductor) === highlightedRosterKey ? ' cell-highlighted-name' : ''}" data-field="conductor" data-index="${si}">${cellHtml(sr.conductor, t('conductor'), { r4: sr.r4c, left: sr.leftc }, inWin(si) ? gCounts : null)}</div></td>`;
+      sub += `<td><div class="cell${sr.r4v ? ' cell-r4' : ''}${sr.leftv ? ' cell-left' : ''}${typeof highlightedRosterKey !== 'undefined' && highlightedRosterKey && nameKey(sr.vip) === highlightedRosterKey ? ' cell-highlighted-name' : ''}" data-field="vip" data-index="${si}">${cellHtml(sr.vip, t('vip'), { r4: sr.r4v, left: sr.leftv }, inWin(si) ? gCounts : null)}</div></td>`;
+      sub += `<td><div class="row-actions">`;
+      sub += `<button class="btn-subrow" data-index="${si}" title="${t('addSubRow')}"><svg width="12" height="12" viewBox="0 0 16 16"><path d="M8 1a1 1 0 0 1 1 1v5h5a1 1 0 1 1 0 2H9v5a1 1 0 1 1-2 0V9H2a1 1 0 0 1 0-2h5V2a1 1 0 0 1 1-1z"/></svg></button>`;
+      sub += `<button class="btn-delete" data-index="${si}" title="Delete">&times;</button>`;
+      sub += `</div></td></tr>`;
+      segments.push(sub);
     }
     // Insert drag grip after last window row
     const groupIndices = groupRows;
     if (w && groupIndices.some(gi => gi === winLast) && !gripInserted) {
-      html += `<tr class="occ-grip-row"><td colspan="4"><div class="occ-grip" title="Drag to move window"><span class="occ-grip-dot"></span><span class="occ-grip-dot"></span><span class="occ-grip-dot"></span></div></td></tr>`;
+      segments.push(`<tr class="occ-grip-row"><td colspan="4"><div class="occ-grip" title="Drag to move window"><span class="occ-grip-dot"></span><span class="occ-grip-dot"></span><span class="occ-grip-dot"></span></div></td></tr>`);
       gripInserted = true;
     }
     i = j;
   }
-  tbody.innerHTML = html;
+
+  // Diff path: if segment count matches, swap only the rows whose HTML changed.
+  // Otherwise fall back to a full innerHTML replace (structural change).
+  const prev = lastRenderSegments;
+  const children = tbody.children;
+  if (prev.length === segments.length && children.length === segments.length) {
+    const tmp = document.createElement('tbody');
+    for (let k = 0; k < segments.length; k++) {
+      if (segments[k] !== prev[k]) {
+        tmp.innerHTML = segments[k];
+        const fresh = tmp.firstElementChild;
+        if (fresh) tbody.replaceChild(fresh, children[k]);
+      }
+    }
+  } else {
+    tbody.innerHTML = segments.join('');
+  }
+  lastRenderSegments = segments;
+
   if (occ.enabled) syncOccUi(getOccWindow());
   renderOccStats(gCounts, cCounts, vCounts);
 }
@@ -1100,9 +1189,23 @@ tbody.addEventListener('click', (e) => {
       nextInGroup.date = rows[index].date;
     }
 
+    // Capture affected keys before splice so we can reconcile roster marks after.
+    const affectedKeys = [nameKey(rows[index].conductor), nameKey(rows[index].vip)]
+      .filter((k, i, arr) => k && arr.indexOf(k) === i);
+
     rows.splice(index, 1);
     if (rows.length === 0) rows.push(newRow());
     saveData();
+
+    let rosterChanged = false;
+    affectedKeys.forEach(k => {
+      if (roster[k] && syncRosterMarksForKey(k)) rosterChanged = true;
+    });
+    if (rosterChanged) {
+      saveRoster();
+      renderRoster();
+    }
+
     renderTable();
     return;
   }
@@ -1204,18 +1307,21 @@ document.getElementById('themeToggle').addEventListener('click', toggleTheme);
   const overlay = document.getElementById('resetModalOverlay');
   const input = document.getElementById('resetConfirmInput');
   const confirmBtn = document.getElementById('resetModalConfirm');
+  let releaseFocus = null;
 
   function openResetModal() {
     input.value = '';
     confirmBtn.disabled = true;
     overlay.classList.add('visible');
     setTimeout(() => input.focus(), 100);
+    releaseFocus = trapFocus(overlay);
   }
 
   function closeResetModal() {
     overlay.classList.remove('visible');
     input.value = '';
     confirmBtn.disabled = true;
+    if (releaseFocus) { releaseFocus(); releaseFocus = null; }
   }
 
   document.getElementById('resetBtn').addEventListener('click', openResetModal);

@@ -5,8 +5,10 @@ const SHARE_FETCH_RETRY_DELAYS_MS = [250, 750, 1500];
 let cachedShareFingerprint = '';
 let cachedShareUrl = '';
 
+const SHARE_PAYLOAD_VERSION = 1;
+
 function buildSharePayload(includeRoster) {
-  const payload = { rows: rows };
+  const payload = { version: SHARE_PAYLOAD_VERSION, rows: rows };
   if (includeRoster) payload.roster = roster;
   return payload;
 }
@@ -151,8 +153,10 @@ function showShareConfirm() {
       </div>`;
     document.body.appendChild(div);
 
+    let releaseFocus = null;
     function cleanup(result) {
       document.removeEventListener('keydown', onKey);
+      if (releaseFocus) { releaseFocus(); releaseFocus = null; }
       div.remove();
       resolve(result);
     }
@@ -160,6 +164,8 @@ function showShareConfirm() {
     function onKey(e) {
       if (e.key === 'Escape') cleanup(false);
     }
+
+    releaseFocus = trapFocus(div);
 
     div.querySelector('#shareConfirmYes').addEventListener('click', () => cleanup(true));
     div.querySelector('#shareConfirmNo').addEventListener('click', () => cleanup(false));
@@ -245,6 +251,7 @@ function openShareModal() {
   clearCachedShare();
   updateShareInfo();
   overlay.classList.add('visible');
+  const releaseFocus = trapFocus(overlay);
 
   function cleanup() {
     overlay.classList.remove('visible');
@@ -257,6 +264,7 @@ function openShareModal() {
     includeRoster.removeEventListener('change', onChange);
     overlay.removeEventListener('click', onOverlay);
     document.removeEventListener('keydown', onKey);
+    releaseFocus();
   }
 
   async function onCopy() {

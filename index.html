@@ -210,13 +210,18 @@
   <script src="hints.js"></script>
   <script src="share.js"></script>
   <script>
-    loadTheme();
-    loadData();
-    loadRoster();
-    loadFromUrl();
-    syncRosterFromTable();
-    applyLang();
-    updateUndoRedoButtons();
+    (async () => {
+      loadTheme();
+      loadData();
+      loadRoster();
+      // Apply language before loadFromUrl so the share-confirm modal renders
+      // in the user's language on first paint.
+      applyLang();
+      updateUndoRedoButtons();
+      await loadFromUrl();
+      // Reconcile roster marks after any shared data has been applied.
+      syncRosterFromTable();
+    })();
   </script>
 </body>
 </html>

@@ -225,7 +225,7 @@ document.getElementById('occDown').addEventListener('click', () => {
     activeTouchId = null;
     clearTimeout(longPressTimer);
     longPressTimer = null;
-    if (dragMoved) suppressClickUntil = Date.now() + 400;
+    if (dragMoved) suppressClickUntil = Date.now() + 200;
     document.body.classList.remove('occ-dragging', 'occ-drag-ready');
     saveOcc();
   }
@@ -333,9 +333,11 @@ document.getElementById('occDown').addEventListener('click', () => {
   });
 
   document.addEventListener('click', (e) => {
-    if (Date.now() <= suppressClickUntil) {
-      e.preventDefault();
-      e.stopPropagation();
-    }
+    if (Date.now() > suppressClickUntil) return;
+    // Only suppress clicks inside the schedule table or on the drag grip.
+    // Toolbar, roster, modals, etc. should remain tappable immediately after a drag.
+    if (!e.target.closest('tbody') && !e.target.closest('.occ-grip')) return;
+    e.preventDefault();
+    e.stopPropagation();
   }, true);
 })();
