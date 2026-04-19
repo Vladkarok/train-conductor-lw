@@ -1234,12 +1234,18 @@ tbody.addEventListener('click', (e) => {
 // ── Add row ──────────────────────────────────────────
 function addNewRow() {
   pushUndo();
-  rows.unshift(newRow());
+  const row = newRow();
+  const newestDate = getEdgeGroupDate('top');
+  if (newestDate) {
+    row.date = formatDate(addDays(newestDate, 1));
+  }
+  rows.unshift(row);
   saveData();
   renderTable();
   requestAnimationFrame(() => {
-    const firstDateCell = document.querySelector('.cell[data-index="0"][data-field="date"]');
-    if (firstDateCell) startEdit(firstDateCell);
+    const targetField = row.date ? 'conductor' : 'date';
+    const targetCell = document.querySelector(`.cell[data-index="0"][data-field="${targetField}"]`);
+    if (targetCell) startEdit(targetCell);
   });
 }
 
