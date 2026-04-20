@@ -2,6 +2,7 @@
 const ROSTER_KEY = 'schedule_roster';
 const ROSTER_VIS_KEY = 'schedule_roster_vis';
 const ROSTER_HIGHLIGHT_KEY = 'schedule_roster_highlight';
+const CONTEXT_MENU_CLOSE_EVENT = 'schedule-close-context-menus';
 let roster = {};
 let rosterVisible = false;
 let highlightedRosterKey = localStorage.getItem(ROSTER_HIGHLIGHT_KEY) || '';
@@ -46,6 +47,18 @@ function saveHighlightedRosterKey() {
   } else {
     localStorage.removeItem(ROSTER_HIGHLIGHT_KEY);
   }
+}
+
+function requestContextMenuClose() {
+  document.dispatchEvent(new Event(CONTEXT_MENU_CLOSE_EVENT));
+}
+
+function toggleRosterHighlight(key) {
+  if (!key) return;
+  highlightedRosterKey = highlightedRosterKey === key ? '' : key;
+  saveHighlightedRosterKey();
+  renderTable();
+  renderRoster();
 }
 
 function addToRoster(name) {
@@ -205,6 +218,8 @@ function renderRoster() {
     if (menu) { menu.remove(); menu = null; }
   }
 
+  document.addEventListener(CONTEXT_MENU_CLOSE_EVENT, closeMenu);
+
   function getRowMarkKey(field, mark) {
     return field === 'conductor' ? mark + 'c' : mark + 'v';
   }
@@ -261,23 +276,39 @@ function renderRoster() {
   }
 
   function showPlayerMenu(x, y, index, field) {
-    closeMenu();
     const row = rows[index];
     const name = field === 'conductor' ? row.conductor : row.vip;
-    if (!name || !name.trim()) return;
+    const normalizedName = name && name.trim();
+    const key = nameKey(name);
+    const isHighlighted = key && highlightedRosterKey === key;
+    if (!normalizedName || !key) return;
+
+    requestContextMenuClose();
 
     menu = document.createElement('div');
     menu.className = 'r4-menu';
     menu.style.left = x + 'px';
     menu.style.top = y + 'px';
 
-    appendMarkActions('r4', { addCell: 'r4ThisCell', addAll: 'r4AllCells', removeCell: 'r4Remove', removeAll: 'r4RemoveAll' }, index, field, name);
+    appendMarkActions('r4', { addCell: 'r4ThisCell', addAll: 'r4AllCells', removeCell: 'r4Remove', removeAll: 'r4RemoveAll' }, index, field, normalizedName);
 
     const leftDivider = document.createElement('div');
     leftDivider.className = 'r4-menu-divider';
     menu.appendChild(leftDivider);
 
-    appendMarkActions('left', { addCell: 'leftThisCell', addAll: 'leftAllCells', removeCell: 'leftRemove', removeAll: 'leftRemoveAll' }, index, field, name);
+    appendMarkActions('left', { addCell: 'leftThisCell', addAll: 'leftAllCells', removeCell: 'leftRemove', removeAll: 'leftRemoveAll' }, index, field, normalizedName);
+
+    const divHighlight = document.createElement('div');
+    divHighlight.className = 'r4-menu-divider';
+    menu.appendChild(divHighlight);
+
+    const btnHighlight = document.createElement('button');
+    btnHighlight.textContent = t(isHighlighted ? 'rosterUnhighlight' : 'rosterHighlight');
+    btnHighlight.addEventListener('click', () => {
+      closeMenu();
+      toggleRosterHighlight(key);
+    });
+    menu.appendChild(btnHighlight);
 
     // Rename option
     const divRename = document.createElement('div');
@@ -285,12 +316,12 @@ function renderRoster() {
     menu.appendChild(divRename);
 
     const btnRename = document.createElement('button');
-    btnRename.textContent = t('renameAll').replace('{name}', name.trim());
+    btnRename.textContent = t('renameAll').replace('{name}', normalizedName);
     btnRename.addEventListener('click', () => {
       closeMenu();
-      const newName = prompt(t('renamePrompt').replace('{name}', name.trim()), name.trim());
-      if (newName && newName.trim() && newName.trim() !== name.trim()) {
-        renamePlayer(name.trim(), newName.trim());
+      const newName = prompt(t('renamePrompt').replace('{name}', normalizedName), normalizedName);
+      if (newName && newName.trim() && newName.trim() !== normalizedName) {
+        renamePlayer(normalizedName, newName.trim());
       }
     });
     menu.appendChild(btnRename);
@@ -428,13 +459,6 @@ document.getElementById('rosterBody').addEventListener('click', (e) => {
   let rosterLongPressTriggered = false;
   let activeMenu = null;
 
-  function toggleRosterHighlight(key) {
-    highlightedRosterKey = highlightedRosterKey === key ? '' : key;
-    saveHighlightedRosterKey();
-    renderTable();
-    renderRoster();
-  }
-
   function closeRosterMarkMenu() {
     if (!activeMenu) return;
     const { el, onDocClick, onKey } = activeMenu;
@@ -444,6 +468,8 @@ document.getElementById('rosterBody').addEventListener('click', (e) => {
     activeMenu = null;
   }
 
+  document.addEventListener(CONTEXT_MENU_CLOSE_EVENT, closeRosterMarkMenu);
+
   function showRosterMarkMenu(x, y, key) {
     if (!roster[key]) return;
     const hasR4 = roster[key].r4;
@@ -451,10 +477,7 @@ document.getElementById('rosterBody').addEventListener('click', (e) => {
     const isHighlighted = highlightedRosterKey === key;
     const name = roster[key].display;
 
-    // Close any existing menu (both schedule and roster) before opening
-    closeRosterMarkMenu();
-    const stray = document.querySelector('.r4-menu');
-    if (stray) stray.remove();
+    requestContextMenuClose();
 
     const menu = document.createElement('div');
     menu.className = 'r4-menu';
