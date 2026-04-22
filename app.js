@@ -78,6 +78,7 @@ const TRANSLATIONS = {
     shareError: 'Could not create share link',
     shareMissing: 'This share link is missing or has expired.',
     shareLinkPlaceholder: 'Link will appear here after you press Copy',
+    saveCell: 'Save cell',
     downloadSchedule: 'Download CSV',
     downloadRoster: 'Download roster',
     hintsTips: 'Tips',
@@ -179,6 +180,7 @@ const TRANSLATIONS = {
     shareError: 'Не вдалося створити посилання',
     shareMissing: 'Це посилання відсутнє або вже закінчилося.',
     shareLinkPlaceholder: 'Посилання з’явиться тут після натискання Копіювати',
+    saveCell: 'Зберегти клітинку',
     downloadSchedule: 'Завантажити CSV',
     downloadRoster: 'Завантажити склад',
     hintsTips: 'Підказки',
@@ -280,6 +282,7 @@ const TRANSLATIONS = {
     shareError: 'Impossible de créer le lien de partage',
     shareMissing: 'Ce lien de partage est introuvable ou a expiré.',
     shareLinkPlaceholder: 'Le lien apparaîtra ici après avoir cliqué sur Copier',
+    saveCell: 'Enregistrer la cellule',
     downloadSchedule: 'Télécharger CSV',
     downloadRoster: "Télécharger l'effectif",
     hintsTips: 'Astuces',
@@ -905,9 +908,9 @@ function renderTable() {
       : `<span class="placeholder">${escapeHtml(datePh)}</span>`;
 
     let leader = `<tr${rowClasses(i)} data-id="${escapeAttr(row.id)}">`;
-    leader += `<td${span > 1 ? ` rowspan="${span}"` : ''}><div class="cell" data-field="date" data-index="${i}">${dateDisplay}</div></td>`;
-    leader += `<td><div class="cell${row.r4c ? ' cell-r4' : ''}${row.leftc ? ' cell-left' : ''}${typeof highlightedRosterKey !== 'undefined' && highlightedRosterKey && nameKey(row.conductor) === highlightedRosterKey ? ' cell-highlighted-name' : ''}" data-field="conductor" data-index="${i}">${cellHtml(row.conductor, t('conductor'), { r4: row.r4c, left: row.leftc }, inWin(i) ? gCounts : null)}</div></td>`;
-    leader += `<td><div class="cell${row.r4v ? ' cell-r4' : ''}${row.leftv ? ' cell-left' : ''}${typeof highlightedRosterKey !== 'undefined' && highlightedRosterKey && nameKey(row.vip) === highlightedRosterKey ? ' cell-highlighted-name' : ''}" data-field="vip" data-index="${i}">${cellHtml(row.vip, t('vip'), { r4: row.r4v, left: row.leftv }, inWin(i) ? gCounts : null)}</div></td>`;
+      leader += `<td${span > 1 ? ` rowspan="${span}"` : ''}><div class="cell" data-field="date" data-index="${i}" tabindex="-1">${dateDisplay}</div></td>`;
+      leader += `<td><div class="cell${row.r4c ? ' cell-r4' : ''}${row.leftc ? ' cell-left' : ''}${typeof highlightedRosterKey !== 'undefined' && highlightedRosterKey && nameKey(row.conductor) === highlightedRosterKey ? ' cell-highlighted-name' : ''}" data-field="conductor" data-index="${i}" tabindex="-1">${cellHtml(row.conductor, t('conductor'), { r4: row.r4c, left: row.leftc }, inWin(i) ? gCounts : null)}</div></td>`;
+      leader += `<td><div class="cell${row.r4v ? ' cell-r4' : ''}${row.leftv ? ' cell-left' : ''}${typeof highlightedRosterKey !== 'undefined' && highlightedRosterKey && nameKey(row.vip) === highlightedRosterKey ? ' cell-highlighted-name' : ''}" data-field="vip" data-index="${i}" tabindex="-1">${cellHtml(row.vip, t('vip'), { r4: row.r4v, left: row.leftv }, inWin(i) ? gCounts : null)}</div></td>`;
     leader += `<td><div class="row-actions">`;
     leader += `<button class="btn-subrow" data-index="${i}" title="${escapeAttr(t('addSubRow'))}"><svg width="12" height="12" viewBox="0 0 16 16"><path d="M8 1a1 1 0 0 1 1 1v5h5a1 1 0 1 1 0 2H9v5a1 1 0 1 1-2 0V9H2a1 1 0 0 1 0-2h5V2a1 1 0 0 1 1-1z"/></svg></button>`;
     leader += `<button class="btn-delete" data-index="${i}" title="Delete">&times;</button>`;
@@ -918,8 +921,8 @@ function renderTable() {
       const si = groupRows[k];
       const sr = rows[si];
       let sub = `<tr${rowClasses(si, 'subrow')} data-id="${escapeAttr(sr.id)}">`;
-      sub += `<td><div class="cell${sr.r4c ? ' cell-r4' : ''}${sr.leftc ? ' cell-left' : ''}${typeof highlightedRosterKey !== 'undefined' && highlightedRosterKey && nameKey(sr.conductor) === highlightedRosterKey ? ' cell-highlighted-name' : ''}" data-field="conductor" data-index="${si}">${cellHtml(sr.conductor, t('conductor'), { r4: sr.r4c, left: sr.leftc }, inWin(si) ? gCounts : null)}</div></td>`;
-      sub += `<td><div class="cell${sr.r4v ? ' cell-r4' : ''}${sr.leftv ? ' cell-left' : ''}${typeof highlightedRosterKey !== 'undefined' && highlightedRosterKey && nameKey(sr.vip) === highlightedRosterKey ? ' cell-highlighted-name' : ''}" data-field="vip" data-index="${si}">${cellHtml(sr.vip, t('vip'), { r4: sr.r4v, left: sr.leftv }, inWin(si) ? gCounts : null)}</div></td>`;
+      sub += `<td><div class="cell${sr.r4c ? ' cell-r4' : ''}${sr.leftc ? ' cell-left' : ''}${typeof highlightedRosterKey !== 'undefined' && highlightedRosterKey && nameKey(sr.conductor) === highlightedRosterKey ? ' cell-highlighted-name' : ''}" data-field="conductor" data-index="${si}" tabindex="-1">${cellHtml(sr.conductor, t('conductor'), { r4: sr.r4c, left: sr.leftc }, inWin(si) ? gCounts : null)}</div></td>`;
+      sub += `<td><div class="cell${sr.r4v ? ' cell-r4' : ''}${sr.leftv ? ' cell-left' : ''}${typeof highlightedRosterKey !== 'undefined' && highlightedRosterKey && nameKey(sr.vip) === highlightedRosterKey ? ' cell-highlighted-name' : ''}" data-field="vip" data-index="${si}" tabindex="-1">${cellHtml(sr.vip, t('vip'), { r4: sr.r4v, left: sr.leftv }, inWin(si) ? gCounts : null)}</div></td>`;
       sub += `<td><div class="row-actions">`;
       sub += `<button class="btn-subrow" data-index="${si}" title="${escapeAttr(t('addSubRow'))}"><svg width="12" height="12" viewBox="0 0 16 16"><path d="M8 1a1 1 0 0 1 1 1v5h5a1 1 0 1 1 0 2H9v5a1 1 0 1 1-2 0V9H2a1 1 0 0 1 0-2h5V2a1 1 0 0 1 1-1z"/></svg></button>`;
       sub += `<button class="btn-delete" data-index="${si}" title="Delete">&times;</button>`;
@@ -1008,6 +1011,7 @@ document.addEventListener('click', (e) => {
 
 // ── Cell editing ─────────────────────────────────────
 let activeInput = null;
+let guidedEditRowId = null;
 
 function startEdit(cell) {
   if (cell.querySelector('input')) return;
@@ -1015,22 +1019,55 @@ function startEdit(cell) {
 
   const field = cell.dataset.field;
   const index = parseInt(cell.dataset.index);
+  if (guidedEditRowId && rows[index] && rows[index].id !== guidedEditRowId) {
+    guidedEditRowId = null;
+  }
   const value = rows[index][field];
 
   const input = document.createElement('input');
   input.type = 'text';
   input.value = value;
   input.placeholder = field === 'date' ? t('datePlaceholder') : t(field);
+  const editor = document.createElement('div');
+  editor.className = 'cell-editor';
+  const saveBtn = document.createElement('button');
+  saveBtn.type = 'button';
+  saveBtn.className = 'cell-save-btn';
+  saveBtn.title = t('saveCell');
+  saveBtn.setAttribute('aria-label', t('saveCell'));
+  saveBtn.innerHTML = '&#10003;';
 
   cell.innerHTML = '';
-  cell.appendChild(input);
+  editor.appendChild(input);
+  editor.appendChild(saveBtn);
+  cell.appendChild(editor);
   input.focus();
   input.select();
   activeInput = input;
 
   let committed = false;
 
-  function commit() {
+  function runPostAction(postAction) {
+    if (postAction.type === 'edit' && postAction.target) {
+      requestAnimationFrame(() => {
+        const target = document.querySelector(`.cell[data-index="${postAction.target.index}"][data-field="${postAction.target.field}"]`);
+        if (target) startEdit(target);
+      });
+    } else if (postAction.type === 'focus' && postAction.target) {
+      requestAnimationFrame(() => {
+        const target = document.querySelector(`.cell[data-index="${postAction.target.index}"][data-field="${postAction.target.field}"]`);
+        if (target) target.focus();
+      });
+    } else if (postAction.type === 'blur') {
+      requestAnimationFrame(() => {
+        if (document.activeElement && typeof document.activeElement.blur === 'function') {
+          try { document.activeElement.blur(); } catch {}
+        }
+      });
+    }
+  }
+
+  function commit(postAction = { type: 'none' }) {
     if (committed) return;
     committed = true;
     activeInput = null;
@@ -1039,7 +1076,11 @@ function startEdit(cell) {
     let val = input.value.trim();
     if (field === 'date' && val) val = normalizeDate(val);
 
-    if (val === oldVal) { renderTable(); return; }
+    if (val === oldVal) {
+      renderTable();
+      runPostAction(postAction);
+      return;
+    }
 
     pushUndo();
     rows[index][field] = val;
@@ -1078,36 +1119,65 @@ function startEdit(cell) {
     }
     saveData();
     renderTable();
+    runPostAction(postAction);
   }
 
   input.addEventListener('blur', commit);
+  saveBtn.addEventListener('mousedown', (ev) => {
+    ev.preventDefault();
+    ev.stopPropagation();
+  });
+  saveBtn.addEventListener('click', (ev) => {
+    ev.preventDefault();
+    ev.stopPropagation();
+    guidedEditRowId = null;
+    commit({ type: 'blur' });
+  });
 
   input.addEventListener('keydown', (ev) => {
+    const isGuidedRow = !!rows[index] && rows[index].id === guidedEditRowId;
     if (ev.key === 'Enter') {
       ev.preventDefault();
-      commit();
-      moveTo(index, field, 'down');
+      if (isGuidedRow && (field === 'date' || field === 'conductor')) {
+        commit(moveTo(index, field, 'right', 'edit'));
+      } else {
+        guidedEditRowId = null;
+        commit(moveTo(index, field, field === 'vip' ? 'down' : 'right', 'focus'));
+      }
     } else if (ev.key === 'Tab') {
       ev.preventDefault();
-      commit();
-      moveTo(index, field, ev.shiftKey ? 'left' : 'right');
+      if (!ev.shiftKey && isGuidedRow && (field === 'date' || field === 'conductor')) {
+        commit(moveTo(index, field, 'right', 'edit'));
+      } else {
+        guidedEditRowId = null;
+        commit(moveTo(index, field, ev.shiftKey ? 'left' : 'right', 'focus'));
+      }
     } else if (ev.key === 'Escape') {
       committed = true;
       activeInput = null;
+      guidedEditRowId = null;
       renderTable();
     } else if (ev.key === 'ArrowDown' && !ev.shiftKey) {
       ev.preventDefault();
-      commit();
-      moveTo(index, field, 'down');
+      guidedEditRowId = null;
+      commit(moveTo(index, field, 'down', 'focus'));
     } else if (ev.key === 'ArrowUp' && !ev.shiftKey) {
       ev.preventDefault();
-      commit();
-      moveTo(index, field, 'up');
+      guidedEditRowId = null;
+      commit(moveTo(index, field, 'up', 'focus'));
+    } else if (ev.key === 'ArrowLeft' && !ev.shiftKey) {
+      ev.preventDefault();
+      guidedEditRowId = null;
+      commit(moveTo(index, field, 'left', 'focus'));
+    } else if (ev.key === 'ArrowRight' && !ev.shiftKey) {
+      ev.preventDefault();
+      guidedEditRowId = null;
+      commit(moveTo(index, field, 'right', 'focus'));
     }
   });
 }
 
-function moveTo(rowIndex, field, direction) {
+function moveTo(rowIndex, field, direction, mode = 'focus') {
   let ri = rowIndex;
   let fi = FIELDS.indexOf(field);
 
@@ -1124,27 +1194,25 @@ function moveTo(rowIndex, field, direction) {
     case 'up': ri--; break;
   }
 
-  if (ri < 0 || ri >= rows.length) return;
+  if (ri < 0 || ri >= rows.length) return { type: 'blur' };
 
-  requestAnimationFrame(() => {
-    let target = document.querySelector(`.cell[data-index="${ri}"][data-field="${FIELDS[fi]}"]`);
-    // If target cell doesn't exist (e.g. date cell on sub-row), skip to next valid cell
-    if (!target) {
-      const maxAttempts = rows.length * FIELDS.length;
-      for (let a = 0; a < maxAttempts && !target; a++) {
-        if (direction === 'left' || direction === 'up') {
-          fi--;
-          if (fi < 0) { fi = FIELDS.length - 1; ri--; }
-        } else {
-          fi++;
-          if (fi >= FIELDS.length) { fi = 0; ri++; }
-        }
-        if (ri < 0 || ri >= rows.length) return;
-        target = document.querySelector(`.cell[data-index="${ri}"][data-field="${FIELDS[fi]}"]`);
+  let targetExists = !!document.querySelector(`.cell[data-index="${ri}"][data-field="${FIELDS[fi]}"]`);
+  if (!targetExists) {
+    const maxAttempts = rows.length * FIELDS.length;
+    for (let a = 0; a < maxAttempts && !targetExists; a++) {
+      if (direction === 'left' || direction === 'up') {
+        fi--;
+        if (fi < 0) { fi = FIELDS.length - 1; ri--; }
+      } else {
+        fi++;
+        if (fi >= FIELDS.length) { fi = 0; ri++; }
       }
+      if (ri < 0 || ri >= rows.length) return { type: 'blur' };
+      targetExists = !!document.querySelector(`.cell[data-index="${ri}"][data-field="${FIELDS[fi]}"]`);
     }
-    if (target) startEdit(target);
-  });
+  }
+  if (!targetExists) return { type: 'blur' };
+  return { type: mode, target: { index: ri, field: FIELDS[fi] } };
 }
 
 // ── Event delegation ─────────────────────────────────
@@ -1171,6 +1239,7 @@ tbody.addEventListener('click', (e) => {
     saveData();
     renderTable();
     requestAnimationFrame(() => {
+      guidedEditRowId = sub.id;
       const conductorCell = document.querySelector(`.cell[data-index="${index + 1}"][data-field="conductor"]`);
       if (conductorCell) startEdit(conductorCell);
     });
@@ -1243,6 +1312,7 @@ function addNewRow() {
   saveData();
   renderTable();
   requestAnimationFrame(() => {
+    guidedEditRowId = row.id;
     const targetField = row.date ? 'conductor' : 'date';
     const targetCell = document.querySelector(`.cell[data-index="0"][data-field="${targetField}"]`);
     if (targetCell) startEdit(targetCell);
@@ -1262,6 +1332,7 @@ function addPastRow() {
   saveData();
   renderTable();
   requestAnimationFrame(() => {
+    guidedEditRowId = row.id;
     const targetField = row.date ? 'conductor' : 'date';
     const target = document.querySelector(`.cell[data-index="${rows.length - 1}"][data-field="${targetField}"]`);
     if (target) startEdit(target);
