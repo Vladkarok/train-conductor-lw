@@ -1125,11 +1125,14 @@ function openCellEditor(index, field) {
   }
 
   function onKey(e) {
-    // Swallow undo/redo while the modal is open — letting them through would
-    // mutate the rows array under us and could invalidate the captured row id.
+    // Block app-level undo/redo while the modal is open (it would mutate
+    // rows under us and invalidate the captured row id). When the key
+    // originates inside the input, let the browser's native text undo/redo
+    // run — we only stop propagation so the global handler doesn't also
+    // fire app undo.
     if ((e.ctrlKey || e.metaKey) && (e.key === 'z' || e.key === 'Z' || e.key === 'y' || e.key === 'Y')) {
-      e.preventDefault();
       e.stopImmediatePropagation();
+      if (e.target !== input) e.preventDefault();
       return;
     }
     if (e.key === 'Enter' && !e.isComposing && e.keyCode !== 229) {
