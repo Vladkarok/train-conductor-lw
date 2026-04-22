@@ -357,12 +357,28 @@ document.getElementById('importScheduleBtn').addEventListener('click', () => {
     }
     saveData();
 
-    // Restore roster from JSON share if present
-    if (jsonData && jsonData.roster) {
+    // Restore roster from JSON share if present. Sanitize each entry —
+    // a hand-edited or older file may have entries that are missing
+    // `display` or are not objects at all, and an unchecked copy would
+    // later crash renderRoster() when it sorts by a.display.
+    if (jsonData && jsonData.roster && typeof jsonData.roster === 'object' && !Array.isArray(jsonData.roster)) {
       if (result.mode === 'replace') {
         Object.keys(roster).forEach(k => delete roster[k]);
       }
-      Object.keys(jsonData.roster).forEach(k => { roster[k] = jsonData.roster[k]; });
+      Object.keys(jsonData.roster).forEach(k => {
+        const entry = jsonData.roster[k];
+        if (!entry || typeof entry !== 'object' || Array.isArray(entry)) return;
+        const safeKey = typeof k === 'string' ? k.trim().toLowerCase().slice(0, 80) : '';
+        if (!safeKey) return;
+        const display = typeof entry.display === 'string' && entry.display
+          ? entry.display.slice(0, 200)
+          : safeKey;
+        roster[safeKey] = {
+          display,
+          r4: !!entry.r4,
+          left: !!entry.left
+        };
+      });
     }
     syncRosterFromTable({ resetMissingMarks: result.mode === 'replace' && !(jsonData && jsonData.roster) });
     saveRoster();

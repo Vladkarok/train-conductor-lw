@@ -439,6 +439,10 @@ function renamePlayer(oldName, newName) {
   if (!oldName || !newName || oldName === newName) return;
   const oldKey = nameKey(oldName);
   const newKey = nameKey(newName);
+  // Reject renames that collapse to an empty key (e.g. "(note only)") — they
+  // would rewrite every matching cell and then stash the roster entry under
+  // an empty-string key, breaking later lookups and sorting.
+  if (!newKey) return;
 
   pushUndo();
   // Update all schedule cells — preserve trailing notes
@@ -662,7 +666,23 @@ function updateUndoRedoButtons() {
 document.getElementById('undoBtn').addEventListener('click', undo);
 document.getElementById('redoBtn').addEventListener('click', redo);
 
+function isEditableTarget(el) {
+  if (!el) return false;
+  if (el.isContentEditable) return true;
+  const tag = el.tagName;
+  if (tag === 'TEXTAREA') return true;
+  if (tag === 'INPUT') {
+    // Exclude non-text input types (checkbox, button, etc).
+    const type = (el.type || 'text').toLowerCase();
+    return !['checkbox', 'radio', 'button', 'submit', 'reset', 'range', 'color', 'file'].includes(type);
+  }
+  return false;
+}
+
 document.addEventListener('keydown', (e) => {
+  // Do not hijack undo/redo while the user is typing in a text field — let
+  // the browser's native text undo/redo run instead.
+  if (isEditableTarget(e.target)) return;
   if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
     e.preventDefault();
     undo();
