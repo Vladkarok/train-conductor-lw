@@ -90,7 +90,7 @@ const TRANSLATIONS = {
     hintNotes: 'Add notes after a name: Smith (Birthday) — notes are preserved, name still matches',
     hintDrag: 'Drag the highlighted occurrence rows to slide the window',
     hintDateFill: 'Click a date cell to auto-fill sequential dates',
-    hintKeyboard: 'Tab / Enter / Arrow keys to navigate; Ctrl+Z / Y for undo-redo',
+    hintKeyboard: 'Click a cell to edit in a popup; Ctrl+Z / Y for undo-redo',
     hintSubRow: 'Top + adds a newest row, bottom + adds an older past row, and row + adds a sub-row',
     rename: 'Rename',
     renameAll: 'Rename "{name}" everywhere',
@@ -194,7 +194,7 @@ const TRANSLATIONS = {
     hintNotes: 'Додайте нотатку після імені: Smith (День народження) — нотатки зберігаються, ім\'я розпізнається',
     hintDrag: 'Перетягніть підсвічені рядки повторень для переміщення вікна',
     hintDateFill: 'Клікніть на дату для автозаповнення послідовних дат',
-    hintKeyboard: 'Tab / Enter / Стрілки для навігації; Ctrl+Z / Y для скасування',
+    hintKeyboard: 'Клацніть клітинку — відкриється вікно редагування; Ctrl+Z / Y для скасування',
     hintSubRow: 'Верхній + додає новий верхній рядок, нижній + додає старий рядок, а + біля рядка додає під-рядок',
     rename: 'Перейменувати',
     renameAll: 'Перейменувати "{name}" всюди',
@@ -298,7 +298,7 @@ const TRANSLATIONS = {
     hintNotes: 'Ajoutez une note après le nom : Smith (Anniversaire) — les notes sont conservées',
     hintDrag: "Faites glisser les lignes surlignées pour déplacer la fenêtre",
     hintDateFill: 'Cliquez sur une date pour remplir automatiquement',
-    hintKeyboard: 'Tab / Entrée / Flèches pour naviguer ; Ctrl+Z / Y pour annuler',
+    hintKeyboard: 'Cliquez sur une cellule pour ouvrir la fenêtre d\'édition ; Ctrl+Z / Y pour annuler',
     hintSubRow: 'Le + du haut ajoute une ligne récente, le + du bas ajoute une ligne plus ancienne, et le + d\'une ligne ajoute une sous-ligne',
     rename: 'Renommer',
     renameAll: 'Renommer "{name}" partout',
@@ -1030,6 +1030,9 @@ function openCellEditor(index, field) {
   if (!rows[index]) return;
   dismissHint();
 
+  // Capture the row identity by id — the numeric index can shift if undo/redo
+  // or any other mutation reorders rows while the modal is open.
+  const rowId = rows[index].id;
   const fieldLabel = t(field);
   const currentValue = rows[index][field] || '';
 
@@ -1064,23 +1067,27 @@ function openCellEditor(index, field) {
   function close() {
     if (closed) return;
     closed = true;
-    document.removeEventListener('keydown', onKey);
+    document.removeEventListener('keydown', onKey, true);
     releaseFocus();
     overlay.remove();
   }
 
   function commit() {
     if (closed) return;
-    const oldVal = rows[index][field];
+    // Re-resolve the index from the captured row id — the row may have moved
+    // if the array was mutated while the modal was open.
+    const liveIndex = rows.findIndex(r => r.id === rowId);
+    if (liveIndex === -1) { close(); return; }
+    const oldVal = rows[liveIndex][field];
     let val = input.value.trim();
     if (field === 'date' && val) val = normalizeDate(val);
 
     if (val === oldVal) { close(); return; }
 
     pushUndo();
-    rows[index][field] = val;
+    rows[liveIndex][field] = val;
     if (field === 'date') {
-      const group = rows[index].group;
+      const group = rows[liveIndex].group;
       rows.forEach(r => { if (r.group === group) r.date = val; });
     }
     // Auto-add to roster + mark auto-detect, but preserve cell-specific marks
@@ -1088,21 +1095,21 @@ function openCellEditor(index, field) {
     if (field === 'conductor' || field === 'vip') {
       const r4Field = field === 'conductor' ? 'r4c' : 'r4v';
       const leftField = field === 'conductor' ? 'leftc' : 'leftv';
-      const prevR4 = rows[index][r4Field];
-      const prevLeft = rows[index][leftField];
+      const prevR4 = rows[liveIndex][r4Field];
+      const prevLeft = rows[liveIndex][leftField];
       const oldKey = nameKey(oldVal);
       const nextKey = nameKey(val);
 
-      rows[index][r4Field] = false;
-      rows[index][leftField] = false;
+      rows[liveIndex][r4Field] = false;
+      rows[liveIndex][leftField] = false;
       if (val) {
         addToRoster(val);
         if (nextKey && nextKey === oldKey) {
-          rows[index][r4Field] = prevR4;
-          rows[index][leftField] = prevLeft;
+          rows[liveIndex][r4Field] = prevR4;
+          rows[liveIndex][leftField] = prevLeft;
         } else if (roster[nextKey]) {
-          if (roster[nextKey].r4) rows[index][r4Field] = true;
-          if (roster[nextKey].left) rows[index][leftField] = true;
+          if (roster[nextKey].r4) rows[liveIndex][r4Field] = true;
+          if (roster[nextKey].left) rows[liveIndex][leftField] = true;
         }
       }
       let rosterChanged = false;
@@ -1118,7 +1125,20 @@ function openCellEditor(index, field) {
   }
 
   function onKey(e) {
+    // Swallow undo/redo while the modal is open — letting them through would
+    // mutate the rows array under us and could invalidate the captured row id.
+    if ((e.ctrlKey || e.metaKey) && (e.key === 'z' || e.key === 'Z' || e.key === 'y' || e.key === 'Y')) {
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      return;
+    }
     if (e.key === 'Enter' && !e.isComposing && e.keyCode !== 229) {
+      // If focus is on Cancel, Enter should cancel — matching button semantics.
+      if (document.activeElement === cancelBtn) {
+        e.preventDefault();
+        close();
+        return;
+      }
       e.preventDefault();
       commit();
     } else if (e.key === 'Escape') {
@@ -1126,7 +1146,8 @@ function openCellEditor(index, field) {
       close();
     }
   }
-  document.addEventListener('keydown', onKey);
+  // Capture phase so we run before the global undo/redo handler.
+  document.addEventListener('keydown', onKey, true);
   saveBtn.addEventListener('click', commit);
   cancelBtn.addEventListener('click', close);
   overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
