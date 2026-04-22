@@ -298,11 +298,6 @@ td {
 .cell:hover {
   background: var(--cell-hover-bg);
 }
-.cell:focus {
-  outline: 2px solid var(--accent-border);
-  outline-offset: -2px;
-  background: var(--cell-hover-bg);
-}
 .cell .placeholder {
   color: var(--muted);
   opacity: .5;
@@ -349,52 +344,29 @@ td {
   border-top-color: var(--accent-border);
 }
 
-/* Cell edit mode */
-.cell-editor {
-  display: flex;
-  align-items: center;
-  gap: 6px;
+/* Cell edit modal input */
+.cell-edit-input {
   width: 100%;
-}
-.cell input {
+  box-sizing: border-box;
   background: var(--input-bg);
   border: 1px solid var(--accent-solid);
   border-radius: 8px;
   color: var(--text);
   font-size: 14px;
   font-family: inherit;
-  padding: 8px 12px;
-  width: 100%;
-  min-width: 0;
+  padding: 10px 12px;
   outline: none;
   transition: border-color .15s;
 }
-.cell input::placeholder {
+.cell-edit-input::placeholder {
   color: var(--muted);
   opacity: .5;
 }
-.cell-save-btn {
-  flex: 0 0 auto;
-  width: 28px;
-  height: 28px;
-  border: 1px solid var(--accent-border);
-  border-radius: 8px;
-  background: var(--accent);
+.cell-edit-title {
+  margin: 0 0 12px 0;
+  font-size: 16px;
+  font-weight: 600;
   color: var(--text);
-  cursor: pointer;
-  font: inherit;
-  font-size: 14px;
-  line-height: 1;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  transition: background .15s, transform .15s;
-}
-.cell-save-btn:hover {
-  background: var(--accent-strong);
-}
-.cell-save-btn:active {
-  transform: scale(.96);
 }
 
 /* Row action buttons */

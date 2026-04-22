@@ -78,7 +78,9 @@ const TRANSLATIONS = {
     shareError: 'Could not create share link',
     shareMissing: 'This share link is missing or has expired.',
     shareLinkPlaceholder: 'Link will appear here after you press Copy',
-    saveCell: 'Save cell',
+    editCellTitle: 'Edit {field}',
+    editCellSave: 'Save',
+    editCellCancel: 'Cancel',
     downloadSchedule: 'Download CSV',
     downloadRoster: 'Download roster',
     hintsTips: 'Tips',
@@ -180,7 +182,9 @@ const TRANSLATIONS = {
     shareError: 'Не вдалося створити посилання',
     shareMissing: 'Це посилання відсутнє або вже закінчилося.',
     shareLinkPlaceholder: 'Посилання з’явиться тут після натискання Копіювати',
-    saveCell: 'Зберегти клітинку',
+    editCellTitle: 'Редагувати: {field}',
+    editCellSave: 'Зберегти',
+    editCellCancel: 'Скасувати',
     downloadSchedule: 'Завантажити CSV',
     downloadRoster: 'Завантажити склад',
     hintsTips: 'Підказки',
@@ -282,7 +286,9 @@ const TRANSLATIONS = {
     shareError: 'Impossible de créer le lien de partage',
     shareMissing: 'Ce lien de partage est introuvable ou a expiré.',
     shareLinkPlaceholder: 'Le lien apparaîtra ici après avoir cliqué sur Copier',
-    saveCell: 'Enregistrer la cellule',
+    editCellTitle: 'Modifier : {field}',
+    editCellSave: 'Enregistrer',
+    editCellCancel: 'Annuler',
     downloadSchedule: 'Télécharger CSV',
     downloadRoster: "Télécharger l'effectif",
     hintsTips: 'Astuces',
@@ -915,9 +921,9 @@ function renderTable() {
       : `<span class="placeholder">${escapeHtml(datePh)}</span>`;
 
     let leader = `<tr${rowClasses(i)} data-id="${escapeAttr(row.id)}">`;
-      leader += `<td${span > 1 ? ` rowspan="${span}"` : ''}><div class="cell" data-field="date" data-index="${i}" tabindex="-1">${dateDisplay}</div></td>`;
-      leader += `<td><div class="cell${row.r4c ? ' cell-r4' : ''}${row.leftc ? ' cell-left' : ''}${typeof highlightedRosterKey !== 'undefined' && highlightedRosterKey && nameKey(row.conductor) === highlightedRosterKey ? ' cell-highlighted-name' : ''}" data-field="conductor" data-index="${i}" tabindex="-1">${cellHtml(row.conductor, t('conductor'), { r4: row.r4c, left: row.leftc }, inWin(i) ? gCounts : null)}</div></td>`;
-      leader += `<td><div class="cell${row.r4v ? ' cell-r4' : ''}${row.leftv ? ' cell-left' : ''}${typeof highlightedRosterKey !== 'undefined' && highlightedRosterKey && nameKey(row.vip) === highlightedRosterKey ? ' cell-highlighted-name' : ''}" data-field="vip" data-index="${i}" tabindex="-1">${cellHtml(row.vip, t('vip'), { r4: row.r4v, left: row.leftv }, inWin(i) ? gCounts : null)}</div></td>`;
+      leader += `<td${span > 1 ? ` rowspan="${span}"` : ''}><div class="cell" data-field="date" data-index="${i}">${dateDisplay}</div></td>`;
+      leader += `<td><div class="cell${row.r4c ? ' cell-r4' : ''}${row.leftc ? ' cell-left' : ''}${typeof highlightedRosterKey !== 'undefined' && highlightedRosterKey && nameKey(row.conductor) === highlightedRosterKey ? ' cell-highlighted-name' : ''}" data-field="conductor" data-index="${i}">${cellHtml(row.conductor, t('conductor'), { r4: row.r4c, left: row.leftc }, inWin(i) ? gCounts : null)}</div></td>`;
+      leader += `<td><div class="cell${row.r4v ? ' cell-r4' : ''}${row.leftv ? ' cell-left' : ''}${typeof highlightedRosterKey !== 'undefined' && highlightedRosterKey && nameKey(row.vip) === highlightedRosterKey ? ' cell-highlighted-name' : ''}" data-field="vip" data-index="${i}">${cellHtml(row.vip, t('vip'), { r4: row.r4v, left: row.leftv }, inWin(i) ? gCounts : null)}</div></td>`;
     leader += `<td><div class="row-actions">`;
     leader += `<button class="btn-subrow" data-index="${i}" title="${escapeAttr(t('addSubRow'))}"><svg width="12" height="12" viewBox="0 0 16 16"><path d="M8 1a1 1 0 0 1 1 1v5h5a1 1 0 1 1 0 2H9v5a1 1 0 1 1-2 0V9H2a1 1 0 0 1 0-2h5V2a1 1 0 0 1 1-1z"/></svg></button>`;
     leader += `<button class="btn-delete" data-index="${i}" title="Delete">&times;</button>`;
@@ -928,8 +934,8 @@ function renderTable() {
       const si = groupRows[k];
       const sr = rows[si];
       let sub = `<tr${rowClasses(si, 'subrow')} data-id="${escapeAttr(sr.id)}">`;
-      sub += `<td><div class="cell${sr.r4c ? ' cell-r4' : ''}${sr.leftc ? ' cell-left' : ''}${typeof highlightedRosterKey !== 'undefined' && highlightedRosterKey && nameKey(sr.conductor) === highlightedRosterKey ? ' cell-highlighted-name' : ''}" data-field="conductor" data-index="${si}" tabindex="-1">${cellHtml(sr.conductor, t('conductor'), { r4: sr.r4c, left: sr.leftc }, inWin(si) ? gCounts : null)}</div></td>`;
-      sub += `<td><div class="cell${sr.r4v ? ' cell-r4' : ''}${sr.leftv ? ' cell-left' : ''}${typeof highlightedRosterKey !== 'undefined' && highlightedRosterKey && nameKey(sr.vip) === highlightedRosterKey ? ' cell-highlighted-name' : ''}" data-field="vip" data-index="${si}" tabindex="-1">${cellHtml(sr.vip, t('vip'), { r4: sr.r4v, left: sr.leftv }, inWin(si) ? gCounts : null)}</div></td>`;
+      sub += `<td><div class="cell${sr.r4c ? ' cell-r4' : ''}${sr.leftc ? ' cell-left' : ''}${typeof highlightedRosterKey !== 'undefined' && highlightedRosterKey && nameKey(sr.conductor) === highlightedRosterKey ? ' cell-highlighted-name' : ''}" data-field="conductor" data-index="${si}">${cellHtml(sr.conductor, t('conductor'), { r4: sr.r4c, left: sr.leftc }, inWin(si) ? gCounts : null)}</div></td>`;
+      sub += `<td><div class="cell${sr.r4v ? ' cell-r4' : ''}${sr.leftv ? ' cell-left' : ''}${typeof highlightedRosterKey !== 'undefined' && highlightedRosterKey && nameKey(sr.vip) === highlightedRosterKey ? ' cell-highlighted-name' : ''}" data-field="vip" data-index="${si}">${cellHtml(sr.vip, t('vip'), { r4: sr.r4v, left: sr.leftv }, inWin(si) ? gCounts : null)}</div></td>`;
       sub += `<td><div class="row-actions">`;
       sub += `<button class="btn-subrow" data-index="${si}" title="${escapeAttr(t('addSubRow'))}"><svg width="12" height="12" viewBox="0 0 16 16"><path d="M8 1a1 1 0 0 1 1 1v5h5a1 1 0 1 1 0 2H9v5a1 1 0 1 1-2 0V9H2a1 1 0 0 1 0-2h5V2a1 1 0 0 1 1-1z"/></svg></button>`;
       sub += `<button class="btn-delete" data-index="${si}" title="Delete">&times;</button>`;
@@ -1017,88 +1023,59 @@ document.addEventListener('click', (e) => {
 });
 
 // ── Cell editing ─────────────────────────────────────
-let activeInput = null;
-let guidedEditRowId = null;
-
-function startEdit(cell) {
-  if (cell.querySelector('input')) return;
+// Cells open a modal popup (matching the style of other app modals) that
+// edits one value at a time. No inline editor, no keyboard grid navigation
+// — intentionally simple. Modeled after the roster rename flow.
+function openCellEditor(index, field) {
+  if (!rows[index]) return;
   dismissHint();
 
-  const field = cell.dataset.field;
-  const index = parseInt(cell.dataset.index);
-  if (guidedEditRowId && rows[index] && rows[index].id !== guidedEditRowId) {
-    guidedEditRowId = null;
-  }
-  const value = rows[index][field];
+  const fieldLabel = t(field);
+  const currentValue = rows[index][field] || '';
 
-  const input = document.createElement('input');
-  input.type = 'text';
-  input.value = value;
-  input.placeholder = field === 'date' ? t('datePlaceholder') : t(field);
-  const editor = document.createElement('div');
-  editor.className = 'cell-editor';
-  const saveBtn = document.createElement('button');
-  saveBtn.type = 'button';
-  saveBtn.className = 'cell-save-btn';
-  saveBtn.title = t('saveCell');
-  saveBtn.setAttribute('aria-label', t('saveCell'));
-  saveBtn.innerHTML = '&#10003;';
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay visible cell-edit-overlay';
+  overlay.innerHTML = `
+    <div class="modal">
+      <h3 class="cell-edit-title"></h3>
+      <input type="text" class="cell-edit-input" />
+      <div class="modal-actions">
+        <button class="btn-cancel cell-edit-cancel" type="button"></button>
+        <button class="btn cell-edit-save" type="button"></button>
+      </div>
+    </div>
+  `;
+  const heading = overlay.querySelector('.cell-edit-title');
+  heading.textContent = t('editCellTitle').replace('{field}', fieldLabel);
+  const input = overlay.querySelector('.cell-edit-input');
+  input.value = currentValue;
+  input.placeholder = field === 'date' ? t('datePlaceholder') : fieldLabel;
+  const cancelBtn = overlay.querySelector('.cell-edit-cancel');
+  cancelBtn.textContent = t('editCellCancel');
+  const saveBtn = overlay.querySelector('.cell-edit-save');
+  saveBtn.textContent = t('editCellSave');
 
-  cell.innerHTML = '';
-  editor.appendChild(input);
-  editor.appendChild(saveBtn);
-  cell.appendChild(editor);
-  input.focus();
-  input.select();
-  activeInput = input;
+  document.body.appendChild(overlay);
+  const releaseFocus = trapFocus(overlay);
+  // Defer focus so the overlay's fade-in doesn't race with the trap's first-focus.
+  requestAnimationFrame(() => { input.focus(); input.select(); });
 
-  let committed = false;
-
-  function runPostAction(postAction) {
-    if (postAction.type === 'blur') {
-      requestAnimationFrame(() => {
-        if (document.activeElement && typeof document.activeElement.blur === 'function') {
-          try { document.activeElement.blur(); } catch {}
-        }
-      });
-      return;
-    }
-    if (!postAction.target) return;
-
-    // Resolve the target cell by row id (stable across reorderings) rather
-    // than by the index captured at moveTo time, and retry once if the
-    // diffed render hasn't committed the node yet. Abort if a modal has
-    // opened in the meantime — we must not steal focus from it.
-    const isModalOpen = () => !!document.querySelector('.modal-overlay.visible');
-    const tryAction = (attempt) => {
-      if (isModalOpen()) return;
-      const idx = rows.findIndex(r => r.id === postAction.target.id);
-      if (idx < 0) return;
-      const target = document.querySelector(`.cell[data-index="${idx}"][data-field="${postAction.target.field}"]`);
-      if (!target) {
-        if (attempt < 1) requestAnimationFrame(() => tryAction(attempt + 1));
-        return;
-      }
-      if (postAction.type === 'edit') startEdit(target);
-      else if (postAction.type === 'focus') target.focus();
-    };
-    requestAnimationFrame(() => tryAction(0));
+  let closed = false;
+  function close() {
+    if (closed) return;
+    closed = true;
+    document.removeEventListener('keydown', onKey);
+    releaseFocus();
+    overlay.remove();
   }
 
-  function commit(postAction = { type: 'none' }) {
-    if (committed) return;
-    committed = true;
-    activeInput = null;
-
+  function commit() {
+    if (closed) return;
     const oldVal = rows[index][field];
     let val = input.value.trim();
     if (field === 'date' && val) val = normalizeDate(val);
 
-    if (val === oldVal) {
-      renderTable();
-      runPostAction(postAction);
-      return;
-    }
+    if (val === oldVal) { close(); return; }
 
     pushUndo();
     rows[index][field] = val;
@@ -1129,111 +1106,30 @@ function startEdit(cell) {
         }
       }
       let rosterChanged = false;
-      [oldKey, nextKey].filter(Boolean).filter((key, idx, arr) => arr.indexOf(key) === idx).forEach(key => {
-        if (roster[key] && syncRosterMarksForKey(key)) rosterChanged = true;
+      [oldKey, nextKey].filter(Boolean).filter((k, i, arr) => arr.indexOf(k) === i).forEach(k => {
+        if (roster[k] && syncRosterMarksForKey(k)) rosterChanged = true;
       });
       if (rosterChanged) saveRoster();
       renderRoster();
     }
     saveData();
     renderTable();
-    runPostAction(postAction);
+    close();
   }
 
-  input.addEventListener('blur', commit);
-  saveBtn.addEventListener('mousedown', (ev) => {
-    ev.preventDefault();
-    ev.stopPropagation();
-  });
-  saveBtn.addEventListener('click', (ev) => {
-    ev.preventDefault();
-    ev.stopPropagation();
-    guidedEditRowId = null;
-    commit({ type: 'blur' });
-  });
-
-  input.addEventListener('keydown', (ev) => {
-    // Gate navigation keys during IME composition so Enter used to finalize a
-    // composed character (UA/FR locales) doesn't commit-and-navigate mid-word.
-    if (ev.isComposing || ev.keyCode === 229) return;
-    const isGuidedRow = !!rows[index] && rows[index].id === guidedEditRowId;
-    if (ev.key === 'Enter') {
-      ev.preventDefault();
-      if (isGuidedRow && (field === 'date' || field === 'conductor')) {
-        commit(moveTo(index, field, 'right', 'edit'));
-      } else {
-        guidedEditRowId = null;
-        commit(moveTo(index, field, field === 'vip' ? 'down' : 'right', 'focus'));
-      }
-    } else if (ev.key === 'Tab') {
-      ev.preventDefault();
-      if (!ev.shiftKey && isGuidedRow && (field === 'date' || field === 'conductor')) {
-        commit(moveTo(index, field, 'right', 'edit'));
-      } else {
-        guidedEditRowId = null;
-        commit(moveTo(index, field, ev.shiftKey ? 'left' : 'right', 'focus'));
-      }
-    } else if (ev.key === 'Escape') {
-      committed = true;
-      activeInput = null;
-      guidedEditRowId = null;
-      renderTable();
-    } else if (ev.key === 'ArrowDown' && !ev.shiftKey) {
-      ev.preventDefault();
-      guidedEditRowId = null;
-      commit(moveTo(index, field, 'down', 'focus'));
-    } else if (ev.key === 'ArrowUp' && !ev.shiftKey) {
-      ev.preventDefault();
-      guidedEditRowId = null;
-      commit(moveTo(index, field, 'up', 'focus'));
-    } else if (ev.key === 'ArrowLeft' && !ev.shiftKey) {
-      ev.preventDefault();
-      guidedEditRowId = null;
-      commit(moveTo(index, field, 'left', 'focus'));
-    } else if (ev.key === 'ArrowRight' && !ev.shiftKey) {
-      ev.preventDefault();
-      guidedEditRowId = null;
-      commit(moveTo(index, field, 'right', 'focus'));
-    }
-  });
-}
-
-function moveTo(rowIndex, field, direction, mode = 'focus') {
-  let ri = rowIndex;
-  let fi = FIELDS.indexOf(field);
-
-  switch (direction) {
-    case 'right':
-      fi++;
-      if (fi >= FIELDS.length) { fi = 0; ri++; }
-      break;
-    case 'left':
-      fi--;
-      if (fi < 0) { fi = FIELDS.length - 1; ri--; }
-      break;
-    case 'down': ri++; break;
-    case 'up': ri--; break;
-  }
-
-  if (ri < 0 || ri >= rows.length) return { type: 'blur' };
-
-  let targetExists = !!document.querySelector(`.cell[data-index="${ri}"][data-field="${FIELDS[fi]}"]`);
-  if (!targetExists) {
-    const maxAttempts = rows.length * FIELDS.length;
-    for (let a = 0; a < maxAttempts && !targetExists; a++) {
-      if (direction === 'left' || direction === 'up') {
-        fi--;
-        if (fi < 0) { fi = FIELDS.length - 1; ri--; }
-      } else {
-        fi++;
-        if (fi >= FIELDS.length) { fi = 0; ri++; }
-      }
-      if (ri < 0 || ri >= rows.length) return { type: 'blur' };
-      targetExists = !!document.querySelector(`.cell[data-index="${ri}"][data-field="${FIELDS[fi]}"]`);
+  function onKey(e) {
+    if (e.key === 'Enter' && !e.isComposing && e.keyCode !== 229) {
+      e.preventDefault();
+      commit();
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      close();
     }
   }
-  if (!targetExists) return { type: 'blur' };
-  return { type: mode, target: { id: rows[ri].id, field: FIELDS[fi] } };
+  document.addEventListener('keydown', onKey);
+  saveBtn.addEventListener('click', commit);
+  cancelBtn.addEventListener('click', close);
+  overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
 }
 
 // ── Event delegation ─────────────────────────────────
@@ -1259,11 +1155,7 @@ tbody.addEventListener('click', (e) => {
     rows.splice(index + 1, 0, sub);
     saveData();
     renderTable();
-    requestAnimationFrame(() => {
-      guidedEditRowId = sub.id;
-      const conductorCell = document.querySelector(`.cell[data-index="${index + 1}"][data-field="conductor"]`);
-      if (conductorCell) startEdit(conductorCell);
-    });
+    openCellEditor(index + 1, 'conductor');
     return;
   }
 
@@ -1311,14 +1203,14 @@ tbody.addEventListener('click', (e) => {
   if (field === 'date' && uniqueGroups > 1 && rows[index].date && parseDate(rows[index].date)) {
     if (activeHint && activeHint.parentElement === cell) {
       dismissHint();
-      startEdit(cell);
+      openCellEditor(index, field);
     } else {
       showFillHint(cell, index);
     }
     return;
   }
 
-  startEdit(cell);
+  openCellEditor(index, field);
 });
 
 // ── Add row ──────────────────────────────────────────
@@ -1332,12 +1224,7 @@ function addNewRow() {
   rows.unshift(row);
   saveData();
   renderTable();
-  requestAnimationFrame(() => {
-    guidedEditRowId = row.id;
-    const targetField = row.date ? 'conductor' : 'date';
-    const targetCell = document.querySelector(`.cell[data-index="0"][data-field="${targetField}"]`);
-    if (targetCell) startEdit(targetCell);
-  });
+  openCellEditor(0, row.date ? 'conductor' : 'date');
 }
 
 document.getElementById('addRowInline').addEventListener('click', addNewRow);
@@ -1352,12 +1239,7 @@ function addPastRow() {
   rows.push(row);
   saveData();
   renderTable();
-  requestAnimationFrame(() => {
-    guidedEditRowId = row.id;
-    const targetField = row.date ? 'conductor' : 'date';
-    const target = document.querySelector(`.cell[data-index="${rows.length - 1}"][data-field="${targetField}"]`);
-    if (target) startEdit(target);
-  });
+  openCellEditor(rows.length - 1, row.date ? 'conductor' : 'date');
 }
 
 document.getElementById('addPastRowBtn').addEventListener('click', addPastRow);
