@@ -432,7 +432,16 @@ document.getElementById('rosterBody').addEventListener('click', (e) => {
     pushUndo();
     delete roster[key];
     saveRoster();
+    // Clear highlight if we just deleted the highlighted entry; otherwise
+    // the cells in the table would stay highlighted with no UI to unset.
+    let tableDirty = false;
+    if (highlightedRosterKey === key) {
+      highlightedRosterKey = '';
+      saveHighlightedRosterKey();
+      tableDirty = true;
+    }
     renderRoster();
+    if (tableDirty) renderTable();
     return;
   }
 

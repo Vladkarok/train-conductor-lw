@@ -473,6 +473,13 @@ function renamePlayer(oldName, newName) {
   if (roster[newKey] && syncRosterMarksForKey(newKey)) markChanged = true;
   if (markChanged) saveRoster();
 
+  // Migrate highlight key to follow the rename so the visual marker is
+  // never orphaned. Clear if the new key no longer exists in the roster.
+  if (highlightedRosterKey === oldKey) {
+    highlightedRosterKey = roster[newKey] ? newKey : '';
+    saveHighlightedRosterKey();
+  }
+
   renderTable();
   renderRoster();
 }
@@ -1048,23 +1055,34 @@ function startEdit(cell) {
   let committed = false;
 
   function runPostAction(postAction) {
-    if (postAction.type === 'edit' && postAction.target) {
-      requestAnimationFrame(() => {
-        const target = document.querySelector(`.cell[data-index="${postAction.target.index}"][data-field="${postAction.target.field}"]`);
-        if (target) startEdit(target);
-      });
-    } else if (postAction.type === 'focus' && postAction.target) {
-      requestAnimationFrame(() => {
-        const target = document.querySelector(`.cell[data-index="${postAction.target.index}"][data-field="${postAction.target.field}"]`);
-        if (target) target.focus();
-      });
-    } else if (postAction.type === 'blur') {
+    if (postAction.type === 'blur') {
       requestAnimationFrame(() => {
         if (document.activeElement && typeof document.activeElement.blur === 'function') {
           try { document.activeElement.blur(); } catch {}
         }
       });
+      return;
     }
+    if (!postAction.target) return;
+
+    // Resolve the target cell by row id (stable across reorderings) rather
+    // than by the index captured at moveTo time, and retry once if the
+    // diffed render hasn't committed the node yet. Abort if a modal has
+    // opened in the meantime — we must not steal focus from it.
+    const isModalOpen = () => !!document.querySelector('.modal-overlay.visible');
+    const tryAction = (attempt) => {
+      if (isModalOpen()) return;
+      const idx = rows.findIndex(r => r.id === postAction.target.id);
+      if (idx < 0) return;
+      const target = document.querySelector(`.cell[data-index="${idx}"][data-field="${postAction.target.field}"]`);
+      if (!target) {
+        if (attempt < 1) requestAnimationFrame(() => tryAction(attempt + 1));
+        return;
+      }
+      if (postAction.type === 'edit') startEdit(target);
+      else if (postAction.type === 'focus') target.focus();
+    };
+    requestAnimationFrame(() => tryAction(0));
   }
 
   function commit(postAction = { type: 'none' }) {
@@ -1135,6 +1153,9 @@ function startEdit(cell) {
   });
 
   input.addEventListener('keydown', (ev) => {
+    // Gate navigation keys during IME composition so Enter used to finalize a
+    // composed character (UA/FR locales) doesn't commit-and-navigate mid-word.
+    if (ev.isComposing || ev.keyCode === 229) return;
     const isGuidedRow = !!rows[index] && rows[index].id === guidedEditRowId;
     if (ev.key === 'Enter') {
       ev.preventDefault();
@@ -1212,7 +1233,7 @@ function moveTo(rowIndex, field, direction, mode = 'focus') {
     }
   }
   if (!targetExists) return { type: 'blur' };
-  return { type: mode, target: { index: ri, field: FIELDS[fi] } };
+  return { type: mode, target: { id: rows[ri].id, field: FIELDS[fi] } };
 }
 
 // ── Event delegation ─────────────────────────────────
