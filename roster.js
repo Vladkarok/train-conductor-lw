@@ -6,6 +6,7 @@ const CONTEXT_MENU_CLOSE_EVENT = 'schedule-close-context-menus';
 let roster = {};
 let rosterVisible = false;
 let highlightedRosterKey = localStorage.getItem(ROSTER_HIGHLIGHT_KEY) || '';
+let renderedRosterKeys = [];
 
 function normalizeRosterEntry(entry) {
   if (!entry) return entry;
@@ -162,6 +163,7 @@ function getRosterStats() {
 function renderRoster() {
   const panel = document.getElementById('rosterPanel');
   const body = document.getElementById('rosterBody');
+  renderedRosterKeys = [];
   panel.classList.toggle('visible', rosterVisible);
   if (!rosterVisible) return;
 
@@ -191,23 +193,31 @@ function renderRoster() {
     return;
   }
 
+  renderedRosterKeys = entries.map(e => e.key);
+
   const cLabel = t('occCond');
   const vLabel = t('occVip');
-  body.innerHTML = entries.map(e =>
-    `<div class="roster-row" data-key="${escapeAttr(e.key)}">` +
+  body.innerHTML = entries.map((e, index) =>
+    `<div class="roster-row" data-roster-index="${index}">` +
       ((e.r4 || e.left) ? `<span class="roster-marks">` +
         (e.r4 ? `<span class="roster-mark-badge roster-r4-toggle active">R4</span>` : '') +
         (e.left ? `<span class="roster-mark-badge roster-left-toggle active">${escapeHtml(t('leftBadge'))}</span>` : '') +
       `</span>` : '') +
-      `<span class="roster-name${e.total === 0 ? ' zero' : ''}${e.left ? ' left' : ''}${e.key === highlightedRosterKey ? ' highlighted' : ''}" data-key="${escapeAttr(e.key)}" title="${escapeAttr(e.display)}">${escapeHtml(e.display)}</span>` +
+      `<span class="roster-name${e.total === 0 ? ' zero' : ''}${e.left ? ' left' : ''}${e.key === highlightedRosterKey ? ' highlighted' : ''}" title="${escapeAttr(e.display)}">${escapeHtml(e.display)}</span>` +
       `<span class="roster-counts">` +
         `<span class="roster-total${e.total === 0 ? ' zero' : ''}">${e.total}</span>` +
         (e.cond ? `<span class="occ-stats-badge cond">${cLabel} ${e.cond}</span>` : '') +
         (e.vip ? `<span class="occ-stats-badge vip">${vLabel} ${e.vip}</span>` : '') +
       `</span>` +
-      `<button class="roster-remove" data-key="${escapeAttr(e.key)}" title="Remove">&times;</button>` +
+      `<button class="roster-remove" title="Remove">&times;</button>` +
     `</div>`
   ).join('');
+}
+
+function getRosterKeyFromRow(row) {
+  if (!row) return null;
+  const index = Number(row.dataset.rosterIndex);
+  return Number.isInteger(index) ? renderedRosterKeys[index] || null : null;
 }
 
 // ── Player mark context menu ─────────────────────────
@@ -428,7 +438,8 @@ document.getElementById('rosterBody').addEventListener('click', (e) => {
   // Remove
   const removeBtn = e.target.closest('.roster-remove');
   if (removeBtn) {
-    const key = removeBtn.dataset.key;
+    const key = getRosterKeyFromRow(removeBtn.closest('.roster-row'));
+    if (!key || !roster[key]) return;
     pushUndo();
     delete roster[key];
     saveRoster();
@@ -442,7 +453,7 @@ document.getElementById('rosterBody').addEventListener('click', (e) => {
   // Click name → rename
   const nameEl = e.target.closest('.roster-name');
   if (nameEl) {
-    const key = nameEl.dataset.key;
+    const key = getRosterKeyFromRow(nameEl.closest('.roster-row'));
     if (!roster[key]) return;
     const oldName = roster[key].display;
     const newName = prompt(t('renamePrompt').replace('{name}', oldName), oldName);
@@ -540,7 +551,7 @@ document.getElementById('rosterBody').addEventListener('click', (e) => {
 
   function getRowKey(target) {
     const row = target.closest('.roster-row');
-    return row ? row.dataset.key : null;
+    return getRosterKeyFromRow(row);
   }
 
   body.addEventListener('contextmenu', (e) => {
@@ -553,7 +564,7 @@ document.getElementById('rosterBody').addEventListener('click', (e) => {
   // Long-press for mobile
   body.addEventListener('touchstart', (e) => {
     const row = e.target.closest('.roster-row');
-    const key = row ? row.dataset.key : null;
+    const key = getRosterKeyFromRow(row);
     if (!key) return;
     rosterLongPressTriggered = false;
     longPressTimer = setTimeout(() => {
