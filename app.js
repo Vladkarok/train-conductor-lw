@@ -78,6 +78,9 @@ const TRANSLATIONS = {
     shareError: 'Could not create share link',
     shareMissing: 'This share link is missing or has expired.',
     shareLinkPlaceholder: 'Link will appear here after you press Copy',
+    editCellTitle: 'Edit {field}',
+    editCellSave: 'Save',
+    editCellCancel: 'Cancel',
     downloadSchedule: 'Download CSV',
     downloadRoster: 'Download roster',
     hintsTips: 'Tips',
@@ -87,7 +90,7 @@ const TRANSLATIONS = {
     hintNotes: 'Add notes after a name: Smith (Birthday) — notes are preserved, name still matches',
     hintDrag: 'Drag the highlighted occurrence rows to slide the window',
     hintDateFill: 'Click a date cell to auto-fill sequential dates',
-    hintKeyboard: 'Tab / Enter / Arrow keys to navigate; Ctrl+Z / Y for undo-redo',
+    hintKeyboard: 'Click a cell to edit in a popup; Ctrl+Z / Y for undo-redo',
     hintSubRow: 'Top + adds a newest row, bottom + adds an older past row, and row + adds a sub-row',
     rename: 'Rename',
     renameAll: 'Rename "{name}" everywhere',
@@ -179,6 +182,9 @@ const TRANSLATIONS = {
     shareError: 'Не вдалося створити посилання',
     shareMissing: 'Це посилання відсутнє або вже закінчилося.',
     shareLinkPlaceholder: 'Посилання з’явиться тут після натискання Копіювати',
+    editCellTitle: 'Редагувати: {field}',
+    editCellSave: 'Зберегти',
+    editCellCancel: 'Скасувати',
     downloadSchedule: 'Завантажити CSV',
     downloadRoster: 'Завантажити склад',
     hintsTips: 'Підказки',
@@ -188,7 +194,7 @@ const TRANSLATIONS = {
     hintNotes: 'Додайте нотатку після імені: Smith (День народження) — нотатки зберігаються, ім\'я розпізнається',
     hintDrag: 'Перетягніть підсвічені рядки повторень для переміщення вікна',
     hintDateFill: 'Клікніть на дату для автозаповнення послідовних дат',
-    hintKeyboard: 'Tab / Enter / Стрілки для навігації; Ctrl+Z / Y для скасування',
+    hintKeyboard: 'Клацніть клітинку — відкриється вікно редагування; Ctrl+Z / Y для скасування',
     hintSubRow: 'Верхній + додає новий верхній рядок, нижній + додає старий рядок, а + біля рядка додає під-рядок',
     rename: 'Перейменувати',
     renameAll: 'Перейменувати "{name}" всюди',
@@ -280,6 +286,9 @@ const TRANSLATIONS = {
     shareError: 'Impossible de créer le lien de partage',
     shareMissing: 'Ce lien de partage est introuvable ou a expiré.',
     shareLinkPlaceholder: 'Le lien apparaîtra ici après avoir cliqué sur Copier',
+    editCellTitle: 'Modifier : {field}',
+    editCellSave: 'Enregistrer',
+    editCellCancel: 'Annuler',
     downloadSchedule: 'Télécharger CSV',
     downloadRoster: "Télécharger l'effectif",
     hintsTips: 'Astuces',
@@ -289,7 +298,7 @@ const TRANSLATIONS = {
     hintNotes: 'Ajoutez une note après le nom : Smith (Anniversaire) — les notes sont conservées',
     hintDrag: "Faites glisser les lignes surlignées pour déplacer la fenêtre",
     hintDateFill: 'Cliquez sur une date pour remplir automatiquement',
-    hintKeyboard: 'Tab / Entrée / Flèches pour naviguer ; Ctrl+Z / Y pour annuler',
+    hintKeyboard: 'Cliquez sur une cellule pour ouvrir la fenêtre d\'édition ; Ctrl+Z / Y pour annuler',
     hintSubRow: 'Le + du haut ajoute une ligne récente, le + du bas ajoute une ligne plus ancienne, et le + d\'une ligne ajoute une sous-ligne',
     rename: 'Renommer',
     renameAll: 'Renommer "{name}" partout',
@@ -430,6 +439,10 @@ function renamePlayer(oldName, newName) {
   if (!oldName || !newName || oldName === newName) return;
   const oldKey = nameKey(oldName);
   const newKey = nameKey(newName);
+  // Reject renames that collapse to an empty key (e.g. "(note only)") — they
+  // would rewrite every matching cell and then stash the roster entry under
+  // an empty-string key, breaking later lookups and sorting.
+  if (!newKey) return;
 
   pushUndo();
   // Update all schedule cells — preserve trailing notes
@@ -469,6 +482,13 @@ function renamePlayer(oldName, newName) {
   if (roster[oldKey] && syncRosterMarksForKey(oldKey)) markChanged = true;
   if (roster[newKey] && syncRosterMarksForKey(newKey)) markChanged = true;
   if (markChanged) saveRoster();
+
+  // Migrate highlight key to follow the rename so the visual marker is
+  // never orphaned. Clear if the new key no longer exists in the roster.
+  if (highlightedRosterKey === oldKey) {
+    highlightedRosterKey = roster[newKey] ? newKey : '';
+    saveHighlightedRosterKey();
+  }
 
   renderTable();
   renderRoster();
@@ -646,7 +666,23 @@ function updateUndoRedoButtons() {
 document.getElementById('undoBtn').addEventListener('click', undo);
 document.getElementById('redoBtn').addEventListener('click', redo);
 
+function isEditableTarget(el) {
+  if (!el) return false;
+  if (el.isContentEditable) return true;
+  const tag = el.tagName;
+  if (tag === 'TEXTAREA') return true;
+  if (tag === 'INPUT') {
+    // Exclude non-text input types (checkbox, button, etc).
+    const type = (el.type || 'text').toLowerCase();
+    return !['checkbox', 'radio', 'button', 'submit', 'reset', 'range', 'color', 'file'].includes(type);
+  }
+  return false;
+}
+
 document.addEventListener('keydown', (e) => {
+  // Do not hijack undo/redo while the user is typing in a text field — let
+  // the browser's native text undo/redo run instead.
+  if (isEditableTarget(e.target)) return;
   if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
     e.preventDefault();
     undo();
@@ -905,9 +941,9 @@ function renderTable() {
       : `<span class="placeholder">${escapeHtml(datePh)}</span>`;
 
     let leader = `<tr${rowClasses(i)} data-id="${escapeAttr(row.id)}">`;
-    leader += `<td${span > 1 ? ` rowspan="${span}"` : ''}><div class="cell" data-field="date" data-index="${i}">${dateDisplay}</div></td>`;
-    leader += `<td><div class="cell${row.r4c ? ' cell-r4' : ''}${row.leftc ? ' cell-left' : ''}${typeof highlightedRosterKey !== 'undefined' && highlightedRosterKey && nameKey(row.conductor) === highlightedRosterKey ? ' cell-highlighted-name' : ''}" data-field="conductor" data-index="${i}">${cellHtml(row.conductor, t('conductor'), { r4: row.r4c, left: row.leftc }, inWin(i) ? gCounts : null)}</div></td>`;
-    leader += `<td><div class="cell${row.r4v ? ' cell-r4' : ''}${row.leftv ? ' cell-left' : ''}${typeof highlightedRosterKey !== 'undefined' && highlightedRosterKey && nameKey(row.vip) === highlightedRosterKey ? ' cell-highlighted-name' : ''}" data-field="vip" data-index="${i}">${cellHtml(row.vip, t('vip'), { r4: row.r4v, left: row.leftv }, inWin(i) ? gCounts : null)}</div></td>`;
+      leader += `<td${span > 1 ? ` rowspan="${span}"` : ''}><div class="cell" data-field="date" data-index="${i}">${dateDisplay}</div></td>`;
+      leader += `<td><div class="cell${row.r4c ? ' cell-r4' : ''}${row.leftc ? ' cell-left' : ''}${typeof highlightedRosterKey !== 'undefined' && highlightedRosterKey && nameKey(row.conductor) === highlightedRosterKey ? ' cell-highlighted-name' : ''}" data-field="conductor" data-index="${i}">${cellHtml(row.conductor, t('conductor'), { r4: row.r4c, left: row.leftc }, inWin(i) ? gCounts : null)}</div></td>`;
+      leader += `<td><div class="cell${row.r4v ? ' cell-r4' : ''}${row.leftv ? ' cell-left' : ''}${typeof highlightedRosterKey !== 'undefined' && highlightedRosterKey && nameKey(row.vip) === highlightedRosterKey ? ' cell-highlighted-name' : ''}" data-field="vip" data-index="${i}">${cellHtml(row.vip, t('vip'), { r4: row.r4v, left: row.leftv }, inWin(i) ? gCounts : null)}</div></td>`;
     leader += `<td><div class="row-actions">`;
     leader += `<button class="btn-subrow" data-index="${i}" title="${escapeAttr(t('addSubRow'))}"><svg width="12" height="12" viewBox="0 0 16 16"><path d="M8 1a1 1 0 0 1 1 1v5h5a1 1 0 1 1 0 2H9v5a1 1 0 1 1-2 0V9H2a1 1 0 0 1 0-2h5V2a1 1 0 0 1 1-1z"/></svg></button>`;
     leader += `<button class="btn-delete" data-index="${i}" title="Delete">&times;</button>`;
@@ -1007,44 +1043,71 @@ document.addEventListener('click', (e) => {
 });
 
 // ── Cell editing ─────────────────────────────────────
-let activeInput = null;
-
-function startEdit(cell) {
-  if (cell.querySelector('input')) return;
+// Cells open a modal popup (matching the style of other app modals) that
+// edits one value at a time. No inline editor, no keyboard grid navigation
+// — intentionally simple. Modeled after the roster rename flow.
+function openCellEditor(index, field) {
+  if (!rows[index]) return;
   dismissHint();
 
-  const field = cell.dataset.field;
-  const index = parseInt(cell.dataset.index);
-  const value = rows[index][field];
+  // Capture the row identity by id — the numeric index can shift if undo/redo
+  // or any other mutation reorders rows while the modal is open.
+  const rowId = rows[index].id;
+  const fieldLabel = t(field);
+  const currentValue = rows[index][field] || '';
 
-  const input = document.createElement('input');
-  input.type = 'text';
-  input.value = value;
-  input.placeholder = field === 'date' ? t('datePlaceholder') : t(field);
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay visible cell-edit-overlay';
+  overlay.innerHTML = `
+    <div class="modal">
+      <h3 class="cell-edit-title"></h3>
+      <input type="text" class="cell-edit-input" />
+      <div class="modal-actions">
+        <button class="btn-cancel cell-edit-cancel" type="button"></button>
+        <button class="btn cell-edit-save" type="button"></button>
+      </div>
+    </div>
+  `;
+  const heading = overlay.querySelector('.cell-edit-title');
+  heading.textContent = t('editCellTitle').replace('{field}', fieldLabel);
+  const input = overlay.querySelector('.cell-edit-input');
+  input.value = currentValue;
+  input.placeholder = field === 'date' ? t('datePlaceholder') : fieldLabel;
+  const cancelBtn = overlay.querySelector('.cell-edit-cancel');
+  cancelBtn.textContent = t('editCellCancel');
+  const saveBtn = overlay.querySelector('.cell-edit-save');
+  saveBtn.textContent = t('editCellSave');
 
-  cell.innerHTML = '';
-  cell.appendChild(input);
-  input.focus();
-  input.select();
-  activeInput = input;
+  document.body.appendChild(overlay);
+  const releaseFocus = trapFocus(overlay);
+  // Defer focus so the overlay's fade-in doesn't race with the trap's first-focus.
+  requestAnimationFrame(() => { input.focus(); input.select(); });
 
-  let committed = false;
+  let closed = false;
+  function close() {
+    if (closed) return;
+    closed = true;
+    document.removeEventListener('keydown', onKey, true);
+    releaseFocus();
+    overlay.remove();
+  }
 
   function commit() {
-    if (committed) return;
-    committed = true;
-    activeInput = null;
-
-    const oldVal = rows[index][field];
+    if (closed) return;
+    // Re-resolve the index from the captured row id — the row may have moved
+    // if the array was mutated while the modal was open.
+    const liveIndex = rows.findIndex(r => r.id === rowId);
+    if (liveIndex === -1) { close(); return; }
+    const oldVal = rows[liveIndex][field];
     let val = input.value.trim();
     if (field === 'date' && val) val = normalizeDate(val);
 
-    if (val === oldVal) { renderTable(); return; }
+    if (val === oldVal) { close(); return; }
 
     pushUndo();
-    rows[index][field] = val;
+    rows[liveIndex][field] = val;
     if (field === 'date') {
-      const group = rows[index].group;
+      const group = rows[liveIndex].group;
       rows.forEach(r => { if (r.group === group) r.date = val; });
     }
     // Auto-add to roster + mark auto-detect, but preserve cell-specific marks
@@ -1052,99 +1115,65 @@ function startEdit(cell) {
     if (field === 'conductor' || field === 'vip') {
       const r4Field = field === 'conductor' ? 'r4c' : 'r4v';
       const leftField = field === 'conductor' ? 'leftc' : 'leftv';
-      const prevR4 = rows[index][r4Field];
-      const prevLeft = rows[index][leftField];
+      const prevR4 = rows[liveIndex][r4Field];
+      const prevLeft = rows[liveIndex][leftField];
       const oldKey = nameKey(oldVal);
       const nextKey = nameKey(val);
 
-      rows[index][r4Field] = false;
-      rows[index][leftField] = false;
+      rows[liveIndex][r4Field] = false;
+      rows[liveIndex][leftField] = false;
       if (val) {
         addToRoster(val);
         if (nextKey && nextKey === oldKey) {
-          rows[index][r4Field] = prevR4;
-          rows[index][leftField] = prevLeft;
+          rows[liveIndex][r4Field] = prevR4;
+          rows[liveIndex][leftField] = prevLeft;
         } else if (roster[nextKey]) {
-          if (roster[nextKey].r4) rows[index][r4Field] = true;
-          if (roster[nextKey].left) rows[index][leftField] = true;
+          if (roster[nextKey].r4) rows[liveIndex][r4Field] = true;
+          if (roster[nextKey].left) rows[liveIndex][leftField] = true;
         }
       }
       let rosterChanged = false;
-      [oldKey, nextKey].filter(Boolean).filter((key, idx, arr) => arr.indexOf(key) === idx).forEach(key => {
-        if (roster[key] && syncRosterMarksForKey(key)) rosterChanged = true;
+      [oldKey, nextKey].filter(Boolean).filter((k, i, arr) => arr.indexOf(k) === i).forEach(k => {
+        if (roster[k] && syncRosterMarksForKey(k)) rosterChanged = true;
       });
       if (rosterChanged) saveRoster();
       renderRoster();
     }
     saveData();
     renderTable();
+    close();
   }
 
-  input.addEventListener('blur', commit);
-
-  input.addEventListener('keydown', (ev) => {
-    if (ev.key === 'Enter') {
-      ev.preventDefault();
-      commit();
-      moveTo(index, field, 'down');
-    } else if (ev.key === 'Tab') {
-      ev.preventDefault();
-      commit();
-      moveTo(index, field, ev.shiftKey ? 'left' : 'right');
-    } else if (ev.key === 'Escape') {
-      committed = true;
-      activeInput = null;
-      renderTable();
-    } else if (ev.key === 'ArrowDown' && !ev.shiftKey) {
-      ev.preventDefault();
-      commit();
-      moveTo(index, field, 'down');
-    } else if (ev.key === 'ArrowUp' && !ev.shiftKey) {
-      ev.preventDefault();
-      commit();
-      moveTo(index, field, 'up');
+  function onKey(e) {
+    // Block app-level undo/redo while the modal is open (it would mutate
+    // rows under us and invalidate the captured row id). When the key
+    // originates inside the input, let the browser's native text undo/redo
+    // run — we only stop propagation so the global handler doesn't also
+    // fire app undo.
+    if ((e.ctrlKey || e.metaKey) && (e.key === 'z' || e.key === 'Z' || e.key === 'y' || e.key === 'Y')) {
+      e.stopImmediatePropagation();
+      if (e.target !== input) e.preventDefault();
+      return;
     }
-  });
-}
-
-function moveTo(rowIndex, field, direction) {
-  let ri = rowIndex;
-  let fi = FIELDS.indexOf(field);
-
-  switch (direction) {
-    case 'right':
-      fi++;
-      if (fi >= FIELDS.length) { fi = 0; ri++; }
-      break;
-    case 'left':
-      fi--;
-      if (fi < 0) { fi = FIELDS.length - 1; ri--; }
-      break;
-    case 'down': ri++; break;
-    case 'up': ri--; break;
-  }
-
-  if (ri < 0 || ri >= rows.length) return;
-
-  requestAnimationFrame(() => {
-    let target = document.querySelector(`.cell[data-index="${ri}"][data-field="${FIELDS[fi]}"]`);
-    // If target cell doesn't exist (e.g. date cell on sub-row), skip to next valid cell
-    if (!target) {
-      const maxAttempts = rows.length * FIELDS.length;
-      for (let a = 0; a < maxAttempts && !target; a++) {
-        if (direction === 'left' || direction === 'up') {
-          fi--;
-          if (fi < 0) { fi = FIELDS.length - 1; ri--; }
-        } else {
-          fi++;
-          if (fi >= FIELDS.length) { fi = 0; ri++; }
-        }
-        if (ri < 0 || ri >= rows.length) return;
-        target = document.querySelector(`.cell[data-index="${ri}"][data-field="${FIELDS[fi]}"]`);
+    if (e.key === 'Enter' && !e.isComposing && e.keyCode !== 229) {
+      // If focus is on Cancel, Enter should cancel — matching button semantics.
+      if (document.activeElement === cancelBtn) {
+        e.preventDefault();
+        close();
+        return;
       }
+      e.preventDefault();
+      commit();
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      close();
     }
-    if (target) startEdit(target);
-  });
+  }
+  // Capture phase so we run before the global undo/redo handler.
+  document.addEventListener('keydown', onKey, true);
+  saveBtn.addEventListener('click', commit);
+  cancelBtn.addEventListener('click', close);
+  overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
 }
 
 // ── Event delegation ─────────────────────────────────
@@ -1170,10 +1199,7 @@ tbody.addEventListener('click', (e) => {
     rows.splice(index + 1, 0, sub);
     saveData();
     renderTable();
-    requestAnimationFrame(() => {
-      const conductorCell = document.querySelector(`.cell[data-index="${index + 1}"][data-field="conductor"]`);
-      if (conductorCell) startEdit(conductorCell);
-    });
+    openCellEditor(index + 1, 'conductor');
     return;
   }
 
@@ -1221,14 +1247,14 @@ tbody.addEventListener('click', (e) => {
   if (field === 'date' && uniqueGroups > 1 && rows[index].date && parseDate(rows[index].date)) {
     if (activeHint && activeHint.parentElement === cell) {
       dismissHint();
-      startEdit(cell);
+      openCellEditor(index, field);
     } else {
       showFillHint(cell, index);
     }
     return;
   }
 
-  startEdit(cell);
+  openCellEditor(index, field);
 });
 
 // ── Add row ──────────────────────────────────────────
@@ -1242,11 +1268,7 @@ function addNewRow() {
   rows.unshift(row);
   saveData();
   renderTable();
-  requestAnimationFrame(() => {
-    const targetField = row.date ? 'conductor' : 'date';
-    const targetCell = document.querySelector(`.cell[data-index="0"][data-field="${targetField}"]`);
-    if (targetCell) startEdit(targetCell);
-  });
+  openCellEditor(0, row.date ? 'conductor' : 'date');
 }
 
 document.getElementById('addRowInline').addEventListener('click', addNewRow);
@@ -1261,11 +1283,7 @@ function addPastRow() {
   rows.push(row);
   saveData();
   renderTable();
-  requestAnimationFrame(() => {
-    const targetField = row.date ? 'conductor' : 'date';
-    const target = document.querySelector(`.cell[data-index="${rows.length - 1}"][data-field="${targetField}"]`);
-    if (target) startEdit(target);
-  });
+  openCellEditor(rows.length - 1, row.date ? 'conductor' : 'date');
 }
 
 document.getElementById('addPastRowBtn').addEventListener('click', addPastRow);
