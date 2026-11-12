@@ -40,6 +40,7 @@ For Cloudflare short-link sharing:
 - add a secret text binding as `SHARE_SIGNING_KEY`
   You can provide one key or a comma/newline-separated key list. New links are signed with the first key; older keys stay valid for reads during rotation.
 - protect `POST /api/share` with a rate-limit rule in Cloudflare WAF
+  The WAF rule covers only the custom domain's zone, not the project's `*.pages.dev` hostnames. The function therefore refuses to create links on any `pages.dev` host (403); links created earlier there can still be opened.
 - the function only accepts same-origin `application/json` share creation requests
 - fresh signed share links may take a moment to propagate globally, so the API marks only newly-created signed links as pending and the frontend retries those briefly
 

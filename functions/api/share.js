@@ -3,9 +3,11 @@ import {
   createShareId,
   createShareToken,
   hasShareSigningKeys,
+  isPagesDevHost,
   jsonResponse,
   methodNotAllowed,
   missingBindingResponse,
+  pagesDevCreateRefusedResponse,
   parseShareRequest,
   validateShareCreateRequest
 } from './_share.js';
@@ -13,6 +15,9 @@ import {
 export async function onRequest(context) {
   if (context.request.method !== 'POST') {
     return methodNotAllowed('POST');
+  }
+  if (isPagesDevHost(new URL(context.request.url).hostname)) {
+    return pagesDevCreateRefusedResponse();
   }
   if (!context.env || !context.env.SHARES) {
     return missingBindingResponse('SHARES');
