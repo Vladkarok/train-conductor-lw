@@ -42,13 +42,42 @@ describe('saved occurrence state', () => {
     expect({ ...app.run('occ') }).toEqual({ enabled: true, windowSize: 3, windowStart: 0 });
   });
 
-  // BUG: occurrence.js parses saved state with a bare JSON.parse at load.
-  // Corrupt saved state throws, occ is never defined, and every later
-  // renderTable() call fails, so the schedule never renders until site data
-  // is cleared. app.js guards its own JSON.parse calls with try/catch.
-  it.fails('falls back to defaults when saved state is not valid JSON', () => {
+  // Corrupt saved state used to throw at load, leaving occ undefined so every
+  // later renderTable() call failed until site data was cleared.
+  it('falls back to defaults when saved state is not valid JSON', () => {
     app = loadApp({ storage: { schedule_occ: '{"enabled":tru' } });
-    expect(app.run('occ').windowSize).toBe(7);
+    expect({ ...app.run('occ') }).toEqual({ enabled: false, windowSize: 7, windowStart: 0 });
+  });
+
+  it('leaves corrupt saved state in storage until a setting changes', () => {
+    app = loadApp({ storage: { schedule_occ: '{"enabled":tru' } });
+    expect(app.localStorage.getItem('schedule_occ')).toBe('{"enabled":tru');
+    app.document.getElementById('occToggle').click();
+    expect(JSON.parse(app.localStorage.getItem('schedule_occ'))).toEqual({ enabled: true, windowSize: 7, windowStart: 0 });
+  });
+
+  it.each([
+    ['null', 'null'],
+    ['an array', '[1,2]'],
+    ['a number', '42'],
+    ['a string', '"on"']
+  ])('falls back to defaults when saved state is %s', (_, raw) => {
+    app = loadApp({ storage: { schedule_occ: raw } });
+    expect({ ...app.run('occ') }).toEqual({ enabled: false, windowSize: 7, windowStart: 0 });
+  });
+
+  it('still re-renders when storage refuses to save', () => {
+    app.localStorage.setItem = () => { throw new Error('QuotaExceededError'); };
+    app.document.getElementById('occToggle').click();
+    expect(app.run('occ').enabled).toBe(true);
+    expect(app.run('__renders.table')).toBe(1);
+  });
+
+  it('keeps the readable fields and drops ones with the wrong type', () => {
+    app = loadApp({ storage: { schedule_occ: JSON.stringify({ enabled: true, windowSize: 'big', windowStart: -3 }) } });
+    expect({ ...app.run('occ') }).toEqual({ enabled: true, windowSize: 7, windowStart: 0 });
+    app = loadApp({ storage: { schedule_occ: JSON.stringify({ enabled: 'yes', windowSize: 4, windowStart: 2 }) } });
+    expect({ ...app.run('occ') }).toEqual({ enabled: false, windowSize: 4, windowStart: 2 });
   });
 });
 

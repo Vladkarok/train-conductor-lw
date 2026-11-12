@@ -173,16 +173,47 @@ describe('parseScheduleData: CSV/TSV', () => {
     expect(new Set(out.map(r => r.id)).size).toBe(3);
   });
 
-  // BUG: header detection checks whether any cell of the first line merely
-  // contains "date", "vip", "chef", ... so a headerless paste whose first
-  // row has a player such as "Viper", "Chefo" or "Update" loses that row.
-  it.fails('keeps a headerless first row whose player name contains "vip"', () => {
+  // Header detection used to check whether any cell of the first line merely
+  // contained "date", "vip", "chef", ... so a headerless paste whose first
+  // row had a player such as "Viper", "Chefo" or "Update" lost that row.
+  it('keeps a headerless first row whose player name contains "vip"', () => {
     expect(parse('01.05.2026,Viper,Bob')).toHaveLength(1);
   });
 
-  it.fails('keeps a headerless first row whose player name contains "date"', () => {
+  it('keeps a headerless first row whose player name contains "date"', () => {
     const out = parse('01.05.2026,Update,Bob\n02.05.2026,Alice,Bob');
     expect(out.map(r => r.conductor)).toEqual(['Update', 'Alice']);
+  });
+
+  it.each([
+    ['a header word as a name, dated', '01.05.2026,VIP,Chef'],
+    ['a header word as a name, undated sub-row', ',Conductor,Bob'],
+    ['a name that contains "chef"', '01.05.2026,Chefo,Bob'],
+    ['an unrecognised date', '2026-05-01,Vip Joe,Bob'],
+    ['a BOM before the first date', '\uFEFF01.05.2026,Viper,Bob'],
+    ['a text day and a header word as a name', 'Monday,Chef,Bob'],
+    ['a translated label word as a name', 'TBD,Train,Bob'],
+    ['a day label and a VIP-like name', 'Sat 01.05,VIP Joe,Bob'],
+    ['an empty date and a header word as one name', ',VIP,Bob']
+  ])('keeps a headerless first row with %s', (_, first) => {
+    expect(parse(first + '\n02.05.2026,Alice,Bob')).toHaveLength(2);
+  });
+
+  it.each([
+    ['English, tab-separated', 'Date\tConductor\tVIP\tR4C\tR4V\tLEFTC\tLEFTV'],
+    ['Ukrainian, with flag columns', 'Дата,Провідник,VIP,R4C,R4V,LEFTC,LEFTV'],
+    ['French, quoted', '"Date","Chef de train","VIP"'],
+    ['hand-made', 'Train date,Train conductor,VIP passenger'],
+    ['only the date column labelled', 'Date,,'],
+    ['with a time zone in the date label', 'Date (UTC+3),Conductor,VIP'],
+    ['without a date word', 'Day,Conductor,VIP'],
+    ['with an empty first cell', ',Conductor,VIP'],
+    ['French, with an empty first cell', ',Chef de train,VIP'],
+    ['with a BOM and spaces', '\uFEFF  Date , Conductor , VIP ']
+  ])('still skips a %s header row', (_, header) => {
+    const d = header.includes('\t') ? '\t' : ',';
+    const out = parse(header + `\n01.05.2026${d}Alice${d}Bob`);
+    expect(out.map(r => r.conductor)).toEqual(['Alice']);
   });
 });
 
@@ -197,6 +228,11 @@ describe('parseScheduleData: JSON share file', () => {
     ]);
     const text = JSON.stringify({ version: 1, rows }, null, 2);
     expect(parse(text)).toEqual(rows);
+  });
+
+  it('reads a share file that starts with a BOM', () => {
+    const rows = makeRows([['01.05.2026', 'A', 'B']]);
+    expect(parse('﻿' + JSON.stringify({ rows }))).toEqual(rows);
   });
 
   it('fills in missing fields and coerces flags to booleans', () => {
@@ -234,13 +270,18 @@ describe('buildScheduleCsv round trip', () => {
     expect(lines.slice(1).map(l => l.split(',')[0])).toEqual(['"03.05.2026"', '""', '"02.05.2026"', '"01.05.2026"']);
   });
 
-  // BUG: fields are unquoted twice on import (splitCsvLine, then unquote),
-  // so a name that itself starts and ends with a quote loses those quotes.
-  // A player called "Ace" (with the quotes) comes back as Ace.
-  it.fails('keeps a name that is wrapped in quotes', () => {
+  // Fields used to be unquoted twice on import (splitCsvLine, then unquote),
+  // so a name that itself started and ended with a quote lost those quotes.
+  it('keeps a name that is wrapped in quotes', () => {
     setRows(makeRows([['01.05.2026', '"Ace"', 'Bob']]));
     const [row] = run('parseScheduleData')(run('buildScheduleCsv')());
     expect(row.conductor).toBe('"Ace"');
+  });
+
+  it('keeps quotes at the edges of names in a pasted CSV and TSV', () => {
+    const parse = text => run('parseScheduleData')(text);
+    expect(parse('01.05.2026,"""Ace""","x ""y"""')[0]).toMatchObject({ conductor: '"Ace"', vip: 'x "y"' });
+    expect(parse('01.05.2026\t"""Ace"""\tBob')[0].conductor).toBe('"Ace"');
   });
 });
 
@@ -255,6 +296,10 @@ describe('parseRosterData', () => {
 
   it('reads a newline-separated list', () => {
     expect(parse('Alice\r\n  Bob  \n\nCarol')).toEqual(plain(['Alice', 'Bob', 'Carol']));
+  });
+
+  it('drops a BOM before the first name of a plain list', () => {
+    expect(parse('﻿Alice\nBob')).toEqual(plain(['Alice', 'Bob']));
   });
 
   it('reads a single comma-separated line as a list of names', () => {
@@ -320,15 +365,56 @@ describe('parseRosterData', () => {
     ]);
   });
 
-  // BUG: header detection looks at the *values* of the first line. "r4" and
-  // "left" are accepted marks, and "Nick" is a common name, but on the first
-  // line they make it look like a header, so that member is silently dropped.
-  it.fails('keeps a headerless first row marked "r4"', () => {
+  // Header detection used to look at the *values* of the first line. "r4"
+  // and "left" are accepted marks, and "Nick" is a common name, but on the
+  // first line they made it look like a header, so that member was dropped.
+  it('keeps a headerless first row marked "r4"', () => {
     expect(parse('Alice,r4\nBob,').map(e => e.name)).toEqual(['Alice', 'Bob']);
   });
 
-  it.fails('keeps a headerless first row for a member named Nick', () => {
+  it('keeps a headerless first row for a member named Nick', () => {
     expect(parse('Nick\t1\nBob\t').map(e => e.name)).toEqual(['Nick', 'Bob']);
+  });
+
+  it.each([
+    ['marked left', 'Alice\t\tleft'],
+    ['named Player and marked 1', 'Player,1,'],
+    ['whose name contains a label', 'Nameless,,1'],
+    ['named Ім\'я-like but with marks', 'Ніка\t1\t1'],
+    ['named Nick with no marks', 'Nick\t\t'],
+    ['named Nick Fury and marked r4', 'Nick Fury,r4'],
+    ['named Name and marked 1', 'Name,1,'],
+    ['named Player alone', 'Player\t']
+  ])('keeps a headerless first row %s', (_, first) => {
+    const d = first.includes('\t') ? '\t' : ',';
+    expect(parse(first + `\nBob${d}${d}`).map(e => e.name)).toEqual([first.split(d)[0], 'Bob']);
+  });
+
+  it.each([
+    ['English export', 'Name\tR4\tLEFT'],
+    ['lower case CSV', 'name,r4,left'],
+    ['name column only', 'Nickname\t\t'],
+    ['Ukrainian', 'Ім\'я\tR4\tLEFT'],
+    ['Ukrainian with a typographic apostrophe', 'Ім’я,R4,Left'],
+    ['French', 'Pseudo\tR4\tLEFT'],
+    ['Player with wordy labels', 'Player,Is R4,Left alliance'],
+    ['extra column before the marks', 'Name,Power,R4,Left'],
+    ['extra column after the marks', 'Name\tR4\tLEFT\tNotes'],
+    ['two-word label', 'Player name\tR4\tLEFT'],
+    ['annotated label', 'Name (in game),R4,Left'],
+    ['Ukrainian two-word label', 'Ім\'я гравця\tR4'],
+    ['name and notes only', 'Name\tNotes\t']
+  ])('still skips a %s header row', (_, header) => {
+    const d = header.includes('\t') ? '\t' : ',';
+    expect(parse(header + `\nAlice${d}1${d}\nBob${d}${d}1`)).toEqual([
+      { name: 'Alice', r4: true, left: false },
+      { name: 'Bob', r4: false, left: true }
+    ]);
+  });
+
+  it('keeps names wrapped in quotes from its own export', () => {
+    setRoster({ '"ace"': { display: '"Ace"', r4: true, left: false } });
+    expect(parse(run('buildRosterText')())).toEqual([{ name: '"Ace"', r4: true, left: false }]);
   });
 });
 

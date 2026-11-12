@@ -31,19 +31,101 @@ function splitCsvLine(line, delimiter) {
   return fields;
 }
 
-// Strip CSV quotes: "value" → value, "" → "
-function unquote(s) {
-  s = s.trim();
-  if (s.length >= 2 && s[0] === '"' && s[s.length - 1] === '"') {
-    s = s.slice(1, -1).replace(/""/g, '"');
+// Drop the BOM a downloaded CSV (or a file saved by some editors) starts with.
+function stripBom(text) {
+  return text.replace(/^﻿/, '');
+}
+
+// splitCsvLine already resolves CSV quoting, so a field only needs trimming.
+// A field that still starts and ends with a quote after splitting held
+// literal quotes (written as """Ace""" in the file) and keeps them.
+function cleanField(s) {
+  return s.trim();
+}
+
+// Lower-case, drop apostrophes and split into words, so header labels match
+// by whole word: "Chef de train" has the word "chef", "Viper" has no "vip".
+function headerWords(cell) {
+  return cell.toLowerCase()
+    .replace(/['ʼ’`]/g, '')
+    .split(/[^\p{L}\p{N}]+/u)
+    .filter(Boolean);
+}
+
+function headerCell(cell) {
+  return headerWords(cell).join(' ');
+}
+
+// Schedule header labels. Whole labels are what the CSV download writes in
+// each UI language; header words also catch hand-made headers such as
+// "Train date" or "VIP passenger".
+const SCHEDULE_DATE_WORDS = new Set(['date', 'дата']);
+const SCHEDULE_HEADER_WORDS = new Set(['date', 'дата', 'conductor', 'провідник', 'chef', 'vip', 'r4c', 'r4v', 'leftc', 'leftv']);
+const SCHEDULE_HEADER_LABELS = new Set(['date', 'дата', 'conductor', 'провідник', 'vip']);
+Object.values(TRANSLATIONS).forEach(tr => {
+  ['date', 'conductor', 'vip'].forEach(k => {
+    if (typeof tr[k] !== 'string') return;
+    SCHEDULE_HEADER_LABELS.add(headerCell(tr[k]));
+    const words = headerWords(tr[k]);
+    if (k === 'date' && words.length === 1) SCHEDULE_DATE_WORDS.add(words[0]);
+  });
+});
+
+// A data row starts with a date or with nothing (a sub-row), so the first
+// line is a header only when:
+// - its first cell is a text label, not a date: it has a date word, or at
+//   least two cells have header words ("Day,Conductor,VIP");
+// - or its first cell is empty and the next two cells are whole labels
+//   (",Conductor,VIP").
+// A headerless first row with a player such as "Viper", "Update" or "Chef"
+// is kept.
+function isScheduleHeader(cols) {
+  const first = cols[0] || '';
+  if (/^\d/.test(first)) return false;
+  if (!first) {
+    return cols.length >= 3 &&
+      SCHEDULE_HEADER_LABELS.has(headerCell(cols[1])) &&
+      SCHEDULE_HEADER_LABELS.has(headerCell(cols[2]));
   }
-  return s;
+  if (headerWords(first).some(w => SCHEDULE_DATE_WORDS.has(w))) return true;
+  const labelled = cols.filter(c => headerWords(c).some(w => SCHEDULE_HEADER_WORDS.has(w)));
+  return labelled.length >= 2;
+}
+
+// Words of a roster name-column label (apostrophes dropped: Ім'я -> імя).
+const ROSTER_NAME_WORDS = new Set([
+  'name', 'names', 'nickname', 'nick', 'member', 'members', 'player', 'players',
+  'імя', 'нік', 'нікнейм', 'учасник', 'гравець', 'имя', 'ник', 'никнейм', 'игрок',
+  'nom', 'pseudo', 'joueur', 'membre'
+]);
+// Other words that may sit in that label: "Name (in game)", "Ім'я гравця".
+const ROSTER_LABEL_FILLER = new Set(['in', 'game', 'ingame', 'of', 'гравця', 'учасника', 'игрока', 'du', 'de', 'la']);
+// Single words that are plausible nicknames on their own.
+const ROSTER_AMBIGUOUS_LABELS = new Set(['nick', 'player', 'member', 'нік', 'ник', 'pseudo', 'joueur', 'membre']);
+const ROSTER_SET_MARKS = new Set(['1', 'true', 'yes', 'y', 'x']);
+
+// The first line is a header when its first cell is a name label ("Name",
+// "Player name", "Ім'я") and either
+// - another cell is an R4/LEFT column label, as in the app's own export
+//   "Name, R4, LEFT" (a first row such as "Nick, r4" is read the same way);
+// - or the label is not a plausible nickname on its own and no other cell
+//   holds a set mark (1, yes, x...).
+// So "Alice, r4", "Nick, 1" and a lone "Nick" are members and are kept.
+function isRosterHeader(cols) {
+  const words = headerWords(cols[0] || '');
+  if (!words.length) return false;
+  if (!words.some(w => ROSTER_NAME_WORDS.has(w))) return false;
+  if (!words.every(w => ROSTER_NAME_WORDS.has(w) || ROSTER_LABEL_FILLER.has(w))) return false;
+  const rest = cols.slice(1).map(c => c.toLowerCase());
+  if (rest.some(c => c.includes('r4') || c.includes('left'))) return true;
+  const ambiguous = words.length === 1 && ROSTER_AMBIGUOUS_LABELS.has(words[0]);
+  return !ambiguous && !rest.some(c => ROSTER_SET_MARKS.has(c));
 }
 
 // Try parsing as JSON share file (from share modal download)
 function tryParseShareJson(text) {
   try {
-    const obj = JSON.parse(text);
+    const obj = JSON.parse(stripBom(text));
     if (obj && Array.isArray(obj.rows)) return obj;
   } catch {}
   return null;
@@ -66,24 +148,19 @@ function parseScheduleData(text) {
     }));
   }
 
-  const lines = text.split(/\r?\n/).filter(l => l.trim());
+  const lines = stripBom(text).split(/\r?\n/).filter(l => l.trim());
   if (!lines.length) return null;
 
   const hasTab = lines.some(l => l.includes('\t'));
   const delimiter = hasTab ? '\t' : ',';
 
-  let startIdx = 0;
-  const firstCols = splitCsvLine(lines[0], delimiter).map(c => unquote(c).toLowerCase());
-  const headerWords = ['date', 'conductor', 'vip', 'дата', 'провідник', 'chef'];
-  if (firstCols.some(c => headerWords.some(h => c.includes(h)))) {
-    startIdx = 1;
-  }
+  const startIdx = isScheduleHeader(splitCsvLine(lines[0], delimiter).map(cleanField)) ? 1 : 0;
 
   const result = [];
   let currentGroup = null;
 
   for (let i = startIdx; i < lines.length; i++) {
-    const cols = splitCsvLine(lines[i], delimiter).map(c => unquote(c));
+    const cols = splitCsvLine(lines[i], delimiter).map(cleanField);
     const rawDate = cols[0] || '';
     const conductor = cols[1] || '';
     const vip = cols[2] || '';
@@ -114,7 +191,7 @@ function parseScheduleData(text) {
 }
 
 function parseRosterData(text) {
-  const lines = text.split(/\r?\n/).filter(l => l.trim());
+  const lines = stripBom(text).split(/\r?\n/).filter(l => l.trim());
   if (!lines.length) return [];
 
   const hasTab = lines.some(l => l.includes('\t'));
@@ -123,23 +200,12 @@ function parseRosterData(text) {
 
   if (hasTab || hasStructuredCsv) {
     const delimiter = hasTab ? '\t' : ',';
-    let startIdx = 0;
-    const firstCols = splitCsvLine(lines[0], delimiter).map(c => unquote(c).toLowerCase());
-    const firstCol = firstCols[0] || '';
-    const secondCol = firstCols[1] || '';
-    const thirdCol = firstCols[2] || '';
-    const hasHeader = ['name', 'member', 'nickname', 'nick', 'ім', 'ник', 'player']
-      .some(h => firstCol.includes(h)) ||
-      secondCol.includes('r4') ||
-      secondCol.includes('left') ||
-      thirdCol.includes('r4') ||
-      thirdCol.includes('left');
-    if (hasHeader) startIdx = 1;
+    const startIdx = isRosterHeader(splitCsvLine(lines[0], delimiter).map(cleanField)) ? 1 : 0;
 
     const entries = [];
     const seen = new Map();
     for (let i = startIdx; i < lines.length; i++) {
-      const cols = splitCsvLine(lines[i], delimiter).map(c => unquote(c));
+      const cols = splitCsvLine(lines[i], delimiter).map(cleanField);
       const name = (cols[0] || '').trim();
       if (!name) continue;
       const key = nameKey(name);
@@ -160,7 +226,7 @@ function parseRosterData(text) {
     return entries;
   }
 
-  const names = text.split(/[\r\n,]+/)
+  const names = stripBom(text).split(/[\r\n,]+/)
     .map(n => n.trim())
     .filter(n => n.length > 0);
   const seen = new Set();
