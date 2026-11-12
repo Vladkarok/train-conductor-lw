@@ -1,10 +1,33 @@
 // ── Occurrence state ────────────────────────────────
 const OCC_KEY = 'schedule_occ';
-const occ = Object.assign(
-  { enabled: false, windowSize: 7, windowStart: 0 },
-  JSON.parse(localStorage.getItem(OCC_KEY) || '{}')
-);
-function saveOcc() { localStorage.setItem(OCC_KEY, JSON.stringify(occ)); }
+// Saved settings are read field by field: a value that does not parse, or a
+// field of the wrong type, falls back to its default so the page still loads.
+// Nothing is written back here, so the stored value stays as it was until the
+// user changes a setting.
+function loadOcc() {
+  const state = { enabled: false, windowSize: 7, windowStart: 0 };
+  let saved = null;
+  try {
+    const raw = localStorage.getItem(OCC_KEY);
+    if (raw) saved = JSON.parse(raw);
+  } catch (err) {
+    console.warn('Ignoring unreadable occurrence settings in localStorage (' + OCC_KEY + ')', err);
+  }
+  if (!saved || typeof saved !== 'object' || Array.isArray(saved)) return state;
+  if (typeof saved.enabled === 'boolean') state.enabled = saved.enabled;
+  if (Number.isInteger(saved.windowSize) && saved.windowSize > 0) state.windowSize = saved.windowSize;
+  if (Number.isInteger(saved.windowStart) && saved.windowStart >= 0) state.windowStart = saved.windowStart;
+  return state;
+}
+const occ = loadOcc();
+// A blocked or full storage must not stop the table from re-rendering.
+function saveOcc() {
+  try {
+    localStorage.setItem(OCC_KEY, JSON.stringify(occ));
+  } catch (err) {
+    console.warn('Could not save occurrence settings', err);
+  }
+}
 
 // ── Occurrence helpers ─────────────────────────────────
 function getOrderedGroups() {
