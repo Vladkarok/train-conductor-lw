@@ -106,6 +106,22 @@ export async function resolveShareToken(token, secret) {
   return { valid: false, id: '', signed: false };
 }
 
+// The WAF rate-limit rule for POST /api/share lives on the custom domain's
+// zone. The *.pages.dev hostnames of the same project bypass zone rules, so
+// link creation is refused there. Reads stay allowed: links created earlier on
+// a pages.dev host point back to that host.
+export function isPagesDevHost(hostname) {
+  const host = String(hostname || '').toLowerCase().replace(/\.$/, '');
+  return host === 'pages.dev' || host.endsWith('.pages.dev');
+}
+
+export function pagesDevCreateRefusedResponse() {
+  return jsonResponse({
+    error: 'Short links cannot be created on this address. Open the site on its main address, or use "Download .json".',
+    hostNotAllowed: true
+  }, 403);
+}
+
 export function validateShareCreateRequest(request) {
   const contentType = request.headers.get('content-type') || '';
   if (!/^application\/json\b/i.test(contentType)) {

@@ -222,6 +222,7 @@ async function createShortShareLink(snapshot) {
   });
   const data = await res.json().catch(() => null);
   if (!res.ok) {
+    if (data && data.hostNotAllowed) throw new Error(t('shareHostNotAllowed'));
     throw new Error((data && data.error) || t('shareWarn'));
   }
   if (!data || !data.id) {
